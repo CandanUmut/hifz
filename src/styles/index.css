@@ -1,0 +1,63 @@
+@import './fonts.css';
+@import './tokens.css';
+@import './ink.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-ui text-base antialiased;
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  /* One focus treatment everywhere. Visible on every interactive element. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: rgb(var(--focus) / 0.25);
+  }
+
+  [dir='rtl'] {
+    text-align: right;
+  }
+}
+
+@layer components {
+  /* Bottom-anchored primary on mobile, inline on larger screens. */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-4
+      text-small font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-paper hover:bg-ink/90 disabled:opacity-40;
+  }
+  .btn-secondary {
+    @apply btn border border-rule bg-paper-raised text-ink hover:border-ink-soft
+      disabled:opacity-40;
+  }
+  /* Secondary actions are text buttons, not competing filled buttons. */
+  .btn-text {
+    @apply btn px-2 text-ink-soft underline-offset-4 hover:text-ink hover:underline
+      disabled:no-underline disabled:opacity-40;
+  }
+  .hairline {
+    @apply border-rule;
+  }
+  .card {
+    @apply rounded-lg border border-rule bg-paper-raised;
+  }
+  .label {
+    @apply text-micro uppercase tracking-[0.08em] text-ink-soft;
+  }
+}
