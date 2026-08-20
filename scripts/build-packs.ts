@@ -113,8 +113,21 @@ const EDITIONS: EditionDef[] = [
   },
 ]
 
-/** Reciter used for the bundled word timings. */
-const RECITER = { id: 7, name: 'Mishari Rashid al-Afasy', style: 'Murattal' }
+/**
+ * Reciter whose word timings get snapshotted into the pack. Timings are
+ * per-recitation, so switching reciter means rebuilding the pack:
+ *   npm run build:packs -- --reciter=6
+ * Ids come from https://api.quran.com/api/v4/resources/recitations.
+ */
+const RECITERS: Record<number, { name: string; style: string }> = {
+  1: { name: 'AbdulBaset AbdulSamad', style: 'Mujawwad' },
+  2: { name: 'AbdulBaset AbdulSamad', style: 'Murattal' },
+  3: { name: 'Abdur-Rahman as-Sudais', style: 'Murattal' },
+  4: { name: 'Abu Bakr al-Shatri', style: 'Murattal' },
+  5: { name: 'Hani ar-Rifai', style: 'Murattal' },
+  6: { name: 'Mahmoud Khalil Al-Husary', style: 'Murattal' },
+  7: { name: 'Mishari Rashid al-Afasy', style: 'Murattal' },
+}
 
 // --- pack file shapes (documented in docs/pack-schema.md) -----------------
 
@@ -321,10 +334,10 @@ interface AudioFile {
   verse_timings: VerseTiming[]
 }
 
-async function fetchAudio(surah: number): Promise<AudioFile | null> {
+async function fetchAudio(surah: number, reciterId: number): Promise<AudioFile | null> {
   try {
     const body = await getJson<{ audio_files: AudioFile[] }>(
-      `${QURAN_QDC}/audio/reciters/${RECITER.id}/audio_files?chapter=${surah}&segments=true`,
+      `${QURAN_QDC}/audio/reciters/${reciterId}/audio_files?chapter=${surah}&segments=true`,
       2,
     )
     return body.audio_files?.[0] ?? null
@@ -351,6 +364,11 @@ async function build(packKey: string) {
 
   const wantAudio = !process.argv.includes('--no-audio')
   const providerChoice = arg('provider', 'auto')
+  const reciterId = Number(arg('reciter', '7'))
+  const reciter = RECITERS[reciterId]
+  if (wantAudio && !reciter) {
+    throw new Error(`unknown reciter ${reciterId} (have: ${Object.keys(RECITERS).join(', ')})`)
+  }
 
   console.log(`\n${def.title} — ${def.surahs.length} surah`)
 
@@ -396,7 +414,7 @@ async function build(packKey: string) {
     const chapter = chapters.get(surah)
     if (!chapter) throw new Error(`no chapter metadata for ${surah}`)
     const verses = await fetchVerses(surah)
-    const audio = wantAudio ? await fetchAudio(surah) : null
+    const audio = wantAudio ? await fetchAudio(surah, reciterId) : null
     const timings = new Map(audio?.verse_timings.map((t) => [t.verse_key, t]) ?? [])
 
     const segments: PackSegment[] = verses.map((verse, index) => {
@@ -524,8 +542,8 @@ async function build(packKey: string) {
       audio: {
         source: 'QuranicAudio, timings from the Quran.com API',
         sourceUrl: 'https://quranicaudio.com',
-        reciter: RECITER.name,
-        style: RECITER.style,
+        reciter: reciter?.name ?? 'none',
+        style: reciter?.style ?? 'none',
       },
     },
     texts,

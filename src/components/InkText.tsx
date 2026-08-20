@@ -41,15 +41,26 @@ function tokenize(text: string): Token[] {
   return out
 }
 
+interface GraphemeSegmenter {
+  segment(input: string): Iterable<{ segment: string }>
+}
+
 /** Length in code units of the first grapheme cluster — base letter plus its marks. */
 function firstClusterLength(word: string): number {
-  const Seg = (Intl as unknown as { Segmenter?: typeof Intl.Segmenter }).Segmenter
+  const Seg = (
+    Intl as unknown as {
+      Segmenter?: new (locale?: string, options?: { granularity: string }) => GraphemeSegmenter
+    }
+  ).Segmenter
   if (Seg) {
-    const seg = new Seg(undefined, { granularity: 'grapheme' })
-    const first = seg.segment(word)[Symbol.iterator]().next()
-    if (!first.done) return (first.value as { segment: string }).segment.length
+    const first = new Seg(undefined, { granularity: 'grapheme' })
+      .segment(word)
+      [Symbol.iterator]()
+      .next()
+    if (!first.done) return first.value.segment.length
   }
-  const m = /^.[\p{M}ـ]*/u.exec(word)
+  // Tatweel is kept with the base letter so an elongated first glyph stays whole.
+  const m = /^.[\p{M}\u0640]*/u.exec(word)
   return m ? m[0].length : 1
 }
 
@@ -66,6 +77,8 @@ export interface InkTextProps {
   className?: string
   /** Words the user got wrong, tinted with --correction. */
   errorWordIndices?: number[]
+  /** Incrementing counter from the keyboard shortcut; peeks the next word. */
+  peekSignal?: number
 }
 
 export function InkText({
@@ -78,6 +91,7 @@ export function InkText({
   activeWordIndex = null,
   className = '',
   errorWordIndices,
+  peekSignal = 0,
 }: InkTextProps) {
   const tokens = useMemo(() => tokenize(text), [text])
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -119,6 +133,19 @@ export function InkText({
     },
     [level, onPeek, peekable],
   )
+
+  // P from the keyboard peeks the next word that is not already showing.
+  const wordCount = tokens.filter((t) => t.kind === 'word').length
+  useEffect(() => {
+    if (!peekSignal || !peekable || level === 0) return
+    for (let i = 0; i < wordCount; i++) {
+      if (!peeked.has(i)) {
+        peek(i)
+        return
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peekSignal])
 
   return (
     <div

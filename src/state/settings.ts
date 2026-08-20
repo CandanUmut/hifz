@@ -14,7 +14,6 @@ export interface Settings {
   /** FSRS desired retention, 0.85–0.95. */
   desiredRetention: number
   dailyNewCap: number
-  reciterId: number
   hintAggressiveness: HintAggressiveness
   /** Remembered per user on the text detail page. */
   showTranslationTr: boolean
@@ -28,7 +27,6 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultResponseMode: 'self_grade',
   desiredRetention: 0.9,
   dailyNewCap: 10,
-  reciterId: 7,
   hintAggressiveness: 'normal',
   showTranslationTr: true,
   showTranslationEn: false,

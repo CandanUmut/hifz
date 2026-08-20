@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "scripts/**/*.ts", "tailwind.config.ts", "postcss.config.js"]
+  "include": ["vite.config.ts", "scripts/**/*.ts", "tailwind.config.ts", "postcss.config.js", "vitest.config.ts"]
 }
