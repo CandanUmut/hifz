@@ -69,17 +69,39 @@ export interface PackTextFile {
     translations: Record<string, string>
     transliterations?: Record<string, string>
     words?: Word[]
-    audio?: { from: number; to: number; wordTimings?: [number, number][] }
+    audio?: { from: number; to: number; wordTimings?: [number, number, number][] }
   }>
 }
 
 const cache = new Map<string, unknown>()
 
+/**
+ * Thrown when a pack file is not on the device and cannot be reached — the
+ * ordinary case for a surah never opened before, offline.
+ */
+export class PackUnavailableError extends Error {
+  readonly offline: boolean
+  constructor(offline: boolean) {
+    super(
+      offline
+        ? 'This one has not been downloaded yet, and there is no connection right now.'
+        : 'This one has not been downloaded yet, and it could not be fetched just now.',
+    )
+    this.name = 'PackUnavailableError'
+    this.offline = offline
+  }
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const hit = cache.get(url)
   if (hit) return hit as T
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`)
+  let res: Response
+  try {
+    res = await fetch(url)
+  } catch {
+    throw new PackUnavailableError(typeof navigator !== 'undefined' && !navigator.onLine)
+  }
+  if (!res.ok) throw new PackUnavailableError(false)
   const data = (await res.json()) as T
   cache.set(url, data)
   return data

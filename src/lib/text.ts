@@ -19,6 +19,24 @@ export function words(content: string): string[] {
 }
 
 /**
+ * The authoritative token list for a segment.
+ *
+ * Whitespace is not a reliable word boundary in a mushaf: a waqf mark such as ۖ
+ * is written after a word with a space before it but belongs to that word, and
+ * splitting there produced an order-tap chip nobody could place and a
+ * type-initials slot nobody could type. When a pack ships `words`, that is the
+ * tokenisation — for the ink fade, the response modes and the audio highlight
+ * alike. User texts have no word list, so they fall back to whitespace.
+ */
+export function segmentWords(segment: {
+  content: string
+  words?: { ar: string }[]
+}): string[] {
+  if (segment.words?.length) return segment.words.map((w) => w.ar)
+  return words(segment.content)
+}
+
+/**
  * The letter a user would type for a word. Diacritics are dropped: nobody
  * types a fatḥa, and demanding one would fail correct answers.
  */
@@ -28,8 +46,8 @@ export function initialOf(word: string): string {
   return first.toLocaleLowerCase()
 }
 
-export function initialsOf(content: string): string[] {
-  return words(content).map(initialOf)
+export function initialsOf(tokens: string[]): string[] {
+  return tokens.map(initialOf)
 }
 
 export function sameInitial(typed: string, expected: string): boolean {

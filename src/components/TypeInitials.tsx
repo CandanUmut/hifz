@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ErrorKind } from '@/engine/types'
-import { initialsOf, sameInitial, words as splitWords } from '@/lib/text'
+import { initialsOf, sameInitial } from '@/lib/text'
 
 /**
  * Type the first letter of each word. Matched positionally, so it is fast to
@@ -8,19 +8,20 @@ import { initialsOf, sameInitial, words as splitWords } from '@/lib/text'
  * where the line came apart.
  */
 export function TypeInitials({
-  content,
+  words: expectedWords,
   dir = 'rtl',
   lang,
   wordClassName = 'font-sacred text-[24px] leading-[1.9]',
   onComplete,
 }: {
-  content: string
+  /** The segment's word list — the authoritative tokenisation. */
+  words: string[]
   dir?: 'rtl' | 'ltr'
   lang?: string
   wordClassName?: string
   onComplete: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
 }) {
-  const expected = useMemo(() => initialsOf(content), [content])
+  const expected = useMemo(() => initialsOf(expectedWords), [expectedWords])
   const [typed, setTyped] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -100,19 +101,18 @@ export function TypeInitials({
 
 /** Per-word diff shown once an objective mode has been checked. */
 export function InitialsDiff({
-  content,
+  words: wordList,
   errors,
   dir = 'rtl',
   lang,
   className = 'sacred sacred-sm',
 }: {
-  content: string
+  words: string[]
   errors: { wordIndex: number }[]
   dir?: 'rtl' | 'ltr'
   lang?: string
   className?: string
 }) {
-  const wordList = splitWords(content)
   const bad = new Set(errors.map((e) => e.wordIndex))
   return (
     <p dir={dir} lang={lang} className={className}>

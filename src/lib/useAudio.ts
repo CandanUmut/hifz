@@ -4,7 +4,8 @@ import type { SegmentRecord, TextRecord } from '@/engine/types'
 /**
  * One audio element for the whole text. A segment is played by seeking into
  * the surah file and stopping at its end timestamp; word highlighting reads
- * the timings snapshotted into the pack.
+ * the timings snapshotted into the pack, each of which names the word it
+ * covers so a repeated phrase highlights the right word both times.
  *
  * This is the only thing in the app that touches the network at runtime, and
  * only once the user presses play.
@@ -36,8 +37,8 @@ export function useAudio(text: TextRecord | undefined) {
       }
       const timings = current.current?.audio?.wordTimings
       if (!timings) return
-      const index = timings.findIndex(([from, to]) => ms >= from && ms < to)
-      setActiveWord(index >= 0 ? index : null)
+      const span = timings.find(([, from, to]) => ms >= from && ms < to)
+      setActiveWord(span ? span[0] : null)
     }
     const onError = () => setError('Audio could not be loaded.')
 

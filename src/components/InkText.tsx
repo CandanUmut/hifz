@@ -41,6 +41,16 @@ function tokenize(text: string): Token[] {
   return out
 }
 
+/** An explicit word list wins: see segmentWords in lib/text. */
+function fromWords(list: string[]): Token[] {
+  const out: Token[] = []
+  list.forEach((word, index) => {
+    if (index > 0) out.push({ kind: 'space', text: ' ' })
+    out.push({ kind: 'word', text: word, index })
+  })
+  return out
+}
+
 interface GraphemeSegmenter {
   segment(input: string): Iterable<{ segment: string }>
 }
@@ -66,6 +76,12 @@ function firstClusterLength(word: string): number {
 
 export interface InkTextProps {
   text: string
+  /**
+   * The segment's own word list, when it has one. Overrides whitespace
+   * splitting so peeks, ghost bars and the audio highlight all index the same
+   * words the rest of the app does.
+   */
+  words?: string[]
   level: HintLevel
   dir?: 'rtl' | 'ltr'
   lang?: string
@@ -83,6 +99,7 @@ export interface InkTextProps {
 
 export function InkText({
   text,
+  words: wordList,
   level,
   dir = 'rtl',
   lang,
@@ -93,7 +110,10 @@ export function InkText({
   errorWordIndices,
   peekSignal = 0,
 }: InkTextProps) {
-  const tokens = useMemo(() => tokenize(text), [text])
+  const tokens = useMemo(
+    () => (wordList?.length ? fromWords(wordList) : tokenize(text)),
+    [text, wordList],
+  )
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [peeked, setPeeked] = useState<Set<number>>(() => new Set())
   const timers = useRef(new Map<number, number>())

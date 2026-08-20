@@ -183,12 +183,13 @@ export interface PackSegment {
   index: number
   /** Human reference, e.g. "78:4". */
   ref: string
+  /** Built by joining `words`, so the two can never disagree. */
   content: string
   translations: Record<string, string>
   /** Keyed by transliteration edition id. Never a translation. */
   transliterations?: Record<string, string>
   words?: PackWord[]
-  audio?: { from: number; to: number; wordTimings?: [number, number][] }
+  audio?: { from: number; to: number; wordTimings?: [number, number, number][] }
 }
 
 export interface PackText {
@@ -504,19 +505,41 @@ async function build(packKey: string) {
       }
 
       const timing = timings.get(ref)
+      /*
+       * Upstream gives [wordPosition, from, to]. Position is authoritative and
+       * NOT the array order: a reciter who repeats part of an ayah produces
+       * several spans for the same word, and 78:40 revisits words 5–10. Storing
+       * the index with each span keeps the highlight on the word being recited
+       * even through a repeat.
+       */
       const wordTimings = timing?.segments
-        ?.map((seg) => {
-          // [position, from, to] — later fields, when present, are not used.
-          const from = seg[1]
-          const to = seg[2]
-          return [from, to] as [number, number]
-        })
-        .filter(([from, to]) => Number.isFinite(from) && Number.isFinite(to))
+        ?.map((seg) => [seg[0] - 1, seg[1], seg[2]] as [number, number, number])
+        .filter(
+          ([index, from, to]) =>
+            Number.isInteger(index) &&
+            index >= 0 &&
+            index < words.length &&
+            Number.isFinite(from) &&
+            Number.isFinite(to) &&
+            to > from,
+        )
+
+      /*
+       * The per-word text carries pause and tajwid marks that the verse-level
+       * field drops, and it attaches a waqf mark to the word it follows rather
+       * than leaving it floating as its own token. Building content from the
+       * words makes the two agree by construction — which the order-tap and
+       * type-initials modes depend on, since a floating waqf mark became a chip
+       * nobody could place and a letter slot nobody could type.
+       */
+      const content = words.length
+        ? words.map((w) => w.ar).join(' ')
+        : verse.text_uthmani.trim()
 
       return {
         index,
         ref,
-        content: verse.text_uthmani.trim(),
+        content,
         translations,
         transliterations: Object.keys(transliterations).length ? transliterations : undefined,
         words: words.length ? words : undefined,
@@ -569,7 +592,7 @@ async function build(packKey: string) {
   const manifest: PackManifest = {
     schema: SCHEMA_VERSION,
     id: def.id,
-    version: '1.1.0',
+    version: '1.2.0',
     builtAt: new Date().toISOString().slice(0, 10),
     title: def.title,
     subtitle: def.subtitle,

@@ -3,7 +3,7 @@ import { guessDirection, mergeAt, segmentText, splitAt } from '../segmentation'
 import { generateItems } from '../items'
 import { evidenceTier } from '../evidence'
 import { isPass, newCard, retrievability, schedule } from '../scheduler'
-import { initialsOf, sameInitial, shuffle } from '@/lib/text'
+import { initialsOf, sameInitial, segmentWords, shuffle, words as splitWords } from '@/lib/text'
 import { resolveTransliteration } from '@/lib/translations'
 import type { ItemRecord, SegmentRecord } from '../types'
 
@@ -228,8 +228,24 @@ describe('scheduling and evidence', () => {
 
 describe('typed initials', () => {
   it('ignores diacritics and alef variants', () => {
-    expect(initialsOf('ٱلْحَمْدُ لِلَّهِ')).toEqual(['ا', 'ل'])
+    expect(initialsOf(splitWords('ٱلْحَمْدُ لِلَّهِ'))).toEqual(['ا', 'ل'])
     expect(sameInitial('أ', 'ا')).toBe(true)
+  })
+
+  it('keeps a waqf mark with its word instead of demanding a slot for it', () => {
+    // ۖ is written after the word with a space, but belongs to it. Splitting on
+    // whitespace asked for a letter nobody could type.
+    const segment = {
+      content: 'صَفًّۭا ۖ لَّا يَتَكَلَّمُونَ',
+      words: [{ ar: 'صَفًّۭا ۖ' }, { ar: 'لَّا' }, { ar: 'يَتَكَلَّمُونَ' }],
+    }
+    expect(splitWords(segment.content)).toHaveLength(4)
+    expect(segmentWords(segment)).toHaveLength(3)
+    expect(initialsOf(segmentWords(segment))).toEqual(['ص', 'ل', 'ي'])
+  })
+
+  it('falls back to whitespace for a text with no word list', () => {
+    expect(segmentWords({ content: 'one two three' })).toEqual(['one', 'two', 'three'])
   })
 
   it('shuffles deterministically for a given seed', () => {

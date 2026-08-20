@@ -120,13 +120,14 @@ if an edition is replaced, use a new id.
         "easy": "'Amma yatasaaa'aloon",
         "aligned": "ʿamma yatasāalūna"
       },
-      "words": [                // optional word-by-word gloss
+      "words": [                // the segment's tokenisation, plus the gloss
         { "ar": "عَمَّ", "translit": "ʿamma", "en": "About what" }
       ],
       "audio": {                // optional, offsets in ms into audioUrl
         "from": 0,
         "to": 6110,
-        "wordTimings": [[0, 330], [330, 1230]]
+        // [wordIndex, from, to] — see rule 3
+        "wordTimings": [[0, 0, 330], [1, 330, 1230]]
       }
     }
   ]
@@ -135,14 +136,23 @@ if an edition is replaced, use a new id.
 
 ### Rules the app relies on
 
-1. **`words[].ar` joined with single spaces must equal `content`.** The
-   order-tap and type-initials response modes shuffle and match on `words`; if
-   the two disagree the app will mark correct answers wrong. Omit `words`
-   entirely rather than shipping an approximation.
+1. **`words` is the tokenisation, and `words[].ar` joined with single spaces
+   must equal `content`.** Where a segment has `words`, the app splits it there
+   — for the ink fade, the response modes and the audio highlight alike — and
+   never on whitespace. That matters because whitespace is not a word boundary
+   in a mushaf: a waqf mark such as `ۖ` is written after a word with a space in
+   front of it but belongs to that word, so `"صَفًّۭا ۖ"` is one entry in
+   `words`, containing a space. Splitting on whitespace instead produced an
+   order-tap chip nobody could place and a type-initials slot nobody could
+   type. Omit `words` entirely rather than shipping an approximation; a text
+   without it falls back to whitespace.
 2. **`index` is contiguous from 0.** `link` items are generated between
    consecutive indices, so a gap invents a join that does not exist.
-3. **`wordTimings` is positional** — entry *n* belongs to `words[n]`, in ms
-   from the start of `audioUrl`.
+3. **`wordTimings` entries are `[wordIndex, from, to]`**, in ms from the start
+   of `audioUrl`, and are *not* positional. A reciter who repeats part of a
+   line produces several spans for the same word — 78:40 revisits words 5–10 —
+   so each span names the word it covers, and the highlight follows the
+   recitation back through the repeat. `wordIndex` is 0-based into `words`.
 4. `translations` keys must appear in the manifest's `sources.translations`,
    and `transliterations` keys in `sources.transliterations`. Unknown keys are
    ignored, and a missing entry is simply not offered.
@@ -152,10 +162,21 @@ if an edition is replaced, use a new id.
    meaning of a line by reading the line. The app also never shows a
    transliteration as a hint during a test, for the same reason.
 6. An id of `aligned` is a promise: exactly one whitespace-separated token per
-   word in `content`, so the app can highlight it in step with the recitation.
+   entry in `words`, so the app can highlight it in step with the recitation.
    If you cannot keep that promise, use a different id.
 7. Text is stored exactly as it should be recited. The app never normalises,
    strips diacritics, or re-wraps it.
+
+## Checking a pack
+
+```sh
+npm run check:packs
+```
+
+Verifies every rule above against everything in `public/packs`, and runs in
+CI. A pack that breaks one of these does not crash — it quietly marks correct
+answers wrong — so this is the only thing standing between a bad pack and the
+reader.
 
 ## Regenerating the bundled packs
 

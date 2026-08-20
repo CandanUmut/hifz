@@ -17,7 +17,7 @@ import type { GradeRating } from '@/engine/scheduler'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { Transliteration } from '@/components/Transliteration'
 import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
-import { words as splitWords } from '@/lib/text'
+import { segmentWords, words as splitWords } from '@/lib/text'
 import { useSettings } from '@/state/settings'
 import { useSession, type SessionEntry, type SessionKind } from '@/state/session'
 
@@ -271,6 +271,7 @@ function Room({ kind }: { kind: SessionKind }) {
               <div className="mt-8">
                 <OrderTap
                   content={answerSegment.content}
+                  words={segmentWords(answerSegment)}
                   dir={text.dir}
                   lang={text.lang}
                   passageClassName={passageClassSmall(text)}
@@ -283,7 +284,7 @@ function Room({ kind }: { kind: SessionKind }) {
             {!showAnswer && mode === 'type_initials' && item.type !== 'meaning' && (
               <div className="mt-8">
                 <TypeInitials
-                  content={answerSegment.content}
+                  words={segmentWords(answerSegment)}
                   dir={text.dir}
                   lang={text.lang}
                   wordClassName={wordClass(text)}
@@ -305,7 +306,7 @@ function Room({ kind }: { kind: SessionKind }) {
 
             {showAnswer && draft.checked && (
               <CheckResult
-                content={answerSegment.content}
+                words={segmentWords(answerSegment)}
                 errors={draft.errors}
                 dir={text.dir}
                 lang={text.lang}
@@ -392,6 +393,7 @@ function LearnPane({
       <p className="label mb-4">Learn — nothing is graded here</p>
       <InkText
         text={shown.content}
+        words={segmentWords(shown)}
         level={0}
         dir={text.dir}
         lang={text.lang}
@@ -466,6 +468,7 @@ function Prompt({
         {!suppressAnswerBlock && (
           <InkText
             text={nextSegment?.content ?? ''}
+            words={nextSegment ? segmentWords(nextSegment) : undefined}
             level={level}
             dir={text.dir}
             lang={text.lang}
@@ -486,6 +489,7 @@ function Prompt({
       <div>
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={0}
           dir={text.dir}
           lang={text.lang}
@@ -506,6 +510,7 @@ function Prompt({
         <p className="label mb-3">Which line is this?</p>
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={level}
           dir={text.dir}
           lang={text.lang}
@@ -523,6 +528,7 @@ function Prompt({
       {!suppressAnswerBlock && (
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={level}
           dir={text.dir}
           lang={text.lang}
@@ -538,13 +544,13 @@ function Prompt({
 }
 
 function CheckResult({
-  content,
+  words: wordList,
   errors,
   dir,
   lang,
   passageClassName,
 }: {
-  content: string
+  words: string[]
   errors: { wordIndex: number; kind: ErrorKind }[]
   dir: 'rtl' | 'ltr'
   lang: string
@@ -558,7 +564,7 @@ function CheckResult({
           : `${errors.length} off — marked below.`}
       </p>
       <InitialsDiff
-        content={content}
+        words={wordList}
         errors={errors}
         dir={dir}
         lang={lang}

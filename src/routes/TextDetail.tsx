@@ -24,8 +24,9 @@ import {
 } from '@/lib/translations'
 import { Transliteration } from '@/components/Transliteration'
 import { useAudio } from '@/lib/useAudio'
+import { segmentWords } from '@/lib/text'
 import { passageClass, wordClass } from '@/lib/typography'
-import { listPacks } from '@/packs/loader'
+import { listPacks, PackUnavailableError } from '@/packs/loader'
 import { useSettings } from '@/state/settings'
 
 const INTENTS: Intent[] = ['learning', 'maintaining', 'paused']
@@ -55,7 +56,12 @@ export default function TextDetail() {
         if (!entry) throw new Error(`unknown pack ${packId}`)
         await ensurePackText(entry, file, id)
       } catch (err) {
-        if (!cancelled) setImportError(String(err))
+        if (cancelled) return
+        setImportError(
+          err instanceof PackUnavailableError
+            ? err.message
+            : 'This one has not been downloaded yet, and it could not be fetched just now.',
+        )
       }
     })()
     return () => {
@@ -94,7 +100,17 @@ export default function TextDetail() {
   )
 
   if (importError) {
-    return <p className="text-small text-correction">Could not open this text: {importError}</p>
+    return (
+      <div>
+        <p className="text-base">{importError}</p>
+        <p className="mt-2 text-small text-ink-soft">
+          Anything you have already opened stays available offline.
+        </p>
+        <Link to="/library" className="btn-secondary mt-6">
+          Back to the library
+        </Link>
+      </div>
+    )
   }
   if (data === undefined) return <p className="text-small text-ink-soft">Loading…</p>
   if (data === null) {
@@ -349,6 +365,7 @@ function Ayah({
 
       <InkText
         text={segment.content}
+        words={segmentWords(segment)}
         level={0}
         dir={text.dir}
         lang={text.lang}
