@@ -307,6 +307,7 @@ function Room({ kind }: { kind: SessionKind }) {
               <div className="mt-8">
                 <TypeInitials
                   words={segmentWords(answerSegment)}
+                  translits={answerSegment.words?.map((w) => w.translit)}
                   dir={text.dir}
                   lang={text.lang}
                   wordClassName={wordClass(text)}

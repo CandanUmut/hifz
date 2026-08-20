@@ -122,7 +122,7 @@ if an edition is replaced, use a new id.
       },
       "words": [                // the segment's tokenisation, plus the gloss
         { "ar": "عَمَّ", "translit": "ʿamma", "en": "About what" }
-      ],
+      ],           // `translit` also lets a reader type Latin initials
       "audio": {                // optional, offsets in ms into audioUrl
         "from": 0,
         "to": 6110,

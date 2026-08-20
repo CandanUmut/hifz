@@ -9,6 +9,7 @@ import { initialsOf, sameInitial } from '@/lib/text'
  */
 export function TypeInitials({
   words: expectedWords,
+  translits,
   dir = 'rtl',
   lang,
   wordClassName = 'font-sacred text-[24px] leading-[1.9]',
@@ -16,12 +17,17 @@ export function TypeInitials({
 }: {
   /** The segment's word list — the authoritative tokenisation. */
   words: string[]
+  /** Per-word transliteration, so a Latin initial counts too. */
+  translits?: (string | undefined)[]
   dir?: 'rtl' | 'ltr'
   lang?: string
   wordClassName?: string
   onComplete: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
 }) {
-  const expected = useMemo(() => initialsOf(expectedWords), [expectedWords])
+  const expected = useMemo(
+    () => initialsOf(expectedWords, translits),
+    [expectedWords, translits],
+  )
   const [typed, setTyped] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -38,8 +44,11 @@ export function TypeInitials({
     onComplete(errors)
   }
 
+  const hasLatin = typed.some((letter) => /[a-z]/i.test(letter))
+
   const onChange = (raw: string) => {
-    const letters = [...raw.replace(/\s+/g, '')].slice(0, expected.length)
+    // Latin keyboards insert a space after some Arabic-layout autocorrects.
+    const letters = [...raw.replace(/[\s-]+/g, '')].slice(0, expected.length)
     setTyped(letters)
     if (letters.length === expected.length) submit(letters)
   }
@@ -50,12 +59,16 @@ export function TypeInitials({
         {expected.map((_, i) => {
           const letter = typed[i]
           const state = letter == null ? 'empty' : sameInitial(letter, expected[i]) ? 'ok' : 'bad'
+          // A Qur'an font has no Latin glyphs, so the slot follows what was typed.
+          const latin = letter != null && /[a-z]/i.test(letter)
           return (
             <span
               key={i}
-              lang={lang}
+              lang={latin ? 'en' : lang}
+              dir={latin ? 'ltr' : dir}
               className={[
-                `flex h-11 w-11 items-center justify-center rounded-md border ${wordClassName}`,
+                'flex h-11 w-11 items-center justify-center rounded-md border',
+                latin ? 'font-ui text-large' : wordClassName,
                 state === 'empty'
                   ? 'border-rule text-ink-soft'
                   : state === 'ok'
@@ -72,18 +85,21 @@ export function TypeInitials({
 
       <label className="mt-4 block">
         <span className="label">First letter of each word</span>
+        <span className="mt-0.5 block text-micro text-ink-soft">
+          Arabic or Latin — <span dir="rtl">ق</span> or q, whichever your keyboard has.
+        </span>
         <input
           ref={inputRef}
-          dir={dir}
-          lang={lang}
+          dir="auto"
           value={typed.join('')}
           onChange={(e) => onChange(e.target.value)}
           autoComplete="off"
           autoCorrect="off"
+          autoCapitalize="none"
           spellCheck={false}
           className={`mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3
-            text-ink ${wordClassName}`}
-          aria-label={`Type the first letter of each of the ${expected.length} words`}
+            text-ink ${hasLatin ? 'font-ui text-large' : wordClassName}`}
+          aria-label={`Type the first letter of each of the ${expected.length} words, in Arabic or Latin script`}
         />
       </label>
 

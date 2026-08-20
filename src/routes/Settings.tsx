@@ -24,7 +24,7 @@ const MODES: { id: ResponseMode; label: string; hint: string }[] = [
   {
     id: 'type_initials',
     label: 'Type initials',
-    hint: 'Fast to type, hard to fake. Recorded as typed from memory.',
+    hint: 'One letter per word, Arabic or Latin. Recorded as typed from memory.',
   },
 ]
 

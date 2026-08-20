@@ -49,8 +49,15 @@ with no peeks: *"You recalled 7 of 10 first-time."*
 
 ## Four ways to answer
 
-`Self-check` (fastest, lowest confidence) · `Tap in order` · `Type initials`
-(fast to type, hard to fake) · `Recite out loud`.
+`Self-check` (fastest, lowest confidence) · `Tap in order` · `Type initials` ·
+`Recite out loud`.
+
+`Type initials` takes one letter per word **in Arabic or Latin script** —
+`ق` or `q`, whichever your keyboard has. It is generous about the letter and
+strict about the order: ٱللَّهُ answers to `a` or `l`, ٱلصَّمَدُ to `a`, `l` or
+`s`, because the letter someone reaches for past the definite article is the
+one after it. What it holds you to is the word order and the word count, which
+is what it was measuring all along.
 
 The last one listens on your device and shows you what it heard — no audio
 leaves the browser. It is opt-in and experimental, because it needs a

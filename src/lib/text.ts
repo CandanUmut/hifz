@@ -46,13 +46,83 @@ export function initialOf(word: string): string {
   return first.toLocaleLowerCase()
 }
 
-export function initialsOf(tokens: string[]): string[] {
-  return tokens.map(initialOf)
+/**
+ * A rough Latin letter per Arabic letter, for texts with no transliteration of
+ * their own. Digraphs collapse to their first letter — nobody is going to type
+ * both halves of "kh" into one slot.
+ */
+const ARABIC_TO_LATIN: Record<string, string> = {
+  ا: 'a', أ: 'a', إ: 'a', آ: 'a', ٱ: 'a', ء: 'a', ع: 'a',
+  ب: 'b', ت: 't', ث: 't', ط: 't',
+  ج: 'j', ح: 'h', ه: 'h', ة: 'h', خ: 'k', ك: 'k',
+  د: 'd', ذ: 'd', ض: 'd',
+  ر: 'r', ز: 'z', ظ: 'z',
+  س: 's', ش: 's', ص: 's',
+  غ: 'g', ف: 'f', ق: 'q', ل: 'l', م: 'm', ن: 'n',
+  و: 'w', ي: 'y', ى: 'y',
 }
 
-export function sameInitial(typed: string, expected: string): boolean {
-  if (!typed) return false
-  return foldArabic(typed).toLocaleLowerCase().slice(0, 1) === expected
+/**
+ * First Latin letter of a transliteration. Leading ʿayn and hamza marks are
+ * skipped — they are not on anyone's keyboard — as are the macrons and dots
+ * that scholarly transliteration puts on letters.
+ */
+export function latinInitial(translit: string): string {
+  const stripped = translit
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[ʿʾʻʼ'`‘’-]/g, '')
+  const match = /[a-z]/i.exec(stripped)
+  return match ? match[0].toLowerCase() : ''
+}
+
+/**
+ * Every letter that should be accepted for one word.
+ *
+ * Typing the Arabic initial assumes an Arabic keyboard and Arabic spelling,
+ * which is a different skill from having the passage memorised — so the Latin
+ * initial counts too. The set is deliberately generous: ٱللَّهُ is transliterated
+ * both "l-lahu" and "al-lahu" in the same surah, and for a word carrying the
+ * definite article the letter someone thinks of is usually the one after it —
+ * "s" for ٱلصَّمَدُ, not "a". What the test still holds you to is the word order
+ * and the word count, which is what it was ever measuring.
+ */
+export function acceptedInitials(word: string, translit?: string): Set<string> {
+  const out = new Set<string>()
+  const add = (value: string) => {
+    if (value) out.add(value.toLocaleLowerCase())
+  }
+
+  const folded = foldArabic(word)
+  const first = [...folded][0] ?? ''
+  add(first)
+  add(ARABIC_TO_LATIN[first])
+  if (translit) add(latinInitial(translit))
+
+  // Past the definite article, for both scripts.
+  const withoutArticle = folded.replace(/^ال/, '')
+  if (withoutArticle && withoutArticle !== folded) {
+    const stem = [...withoutArticle][0] ?? ''
+    add(stem)
+    add(ARABIC_TO_LATIN[stem])
+  }
+  if (translit) {
+    const stemTranslit = translit.replace(/^(al|l)[-\u2010-\u2015 ]?/i, '')
+    add(latinInitial(stemTranslit))
+  }
+
+  return out
+}
+
+export function initialsOf(tokens: string[], translits?: (string | undefined)[]): Set<string>[] {
+  return tokens.map((token, i) => acceptedInitials(token, translits?.[i]))
+}
+
+export function sameInitial(typed: string, accepted: Set<string> | undefined): boolean {
+  if (!typed || !accepted) return false
+  const arabic = foldArabic(typed).toLocaleLowerCase().slice(0, 1)
+  if (accepted.has(arabic)) return true
+  return accepted.has(typed.toLocaleLowerCase().slice(0, 1))
 }
 
 /** Deterministic shuffle so a re-render does not reorder the chips mid-tap. */
