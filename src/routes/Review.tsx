@@ -1,26 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { InkText, type HintLevel } from '@/components/InkText'
+import { InkText } from '@/components/InkText'
 import { GradeButtons } from '@/components/GradeButtons'
-import { OrderTap } from '@/components/OrderTap'
-import { InitialsDiff, TypeInitials } from '@/components/TypeInitials'
 import { Recite } from '@/components/Recite'
-import { PeekDots, SessionMarks } from '@/components/SessionMarks'
-import { db, newId } from '@/db/db'
+import { SessionMarks } from '@/components/SessionMarks'
+import { SimilarPassages } from '@/components/SimilarPassages'
+import { Transliteration } from '@/components/Transliteration'
+import { db } from '@/db/db'
 import {
   buildQueue,
   coldCheckCandidates,
+  getItems,
   getSegments,
+  readingOrder,
   recordAttempt,
 } from '@/db/repo'
-import { ITEM_TYPE_LABELS, type ErrorKind, type SegmentRecord, type TextRecord } from '@/engine/types'
+import type { SegmentRecord, TextRecord } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
+import { useT } from '@/i18n'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
-import { Transliteration } from '@/components/Transliteration'
-import { SimilarPassages } from '@/components/SimilarPassages'
-import { useInterference } from '@/lib/useInterference'
-import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
 import { segmentWords, words as splitWords } from '@/lib/text'
+import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
+import { useAudio } from '@/lib/useAudio'
+import { useInterference } from '@/lib/useInterference'
 import { useSettings } from '@/state/settings'
 import { useSession, type SessionEntry, type SessionKind } from '@/state/session'
 
@@ -30,8 +32,10 @@ export default function Review({ kind = 'review' }: { kind?: SessionKind }) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const focusItemId = params.get('item')
+  const practiseTextId = params.get('text')
   const settings = useSettings()
   const session = useSession()
+  const t = useT()
   const [loading, setLoading] = useState(true)
   const [empty, setEmpty] = useState(false)
   const started = useRef(false)
@@ -39,49 +43,34 @@ export default function Review({ kind = 'review' }: { kind?: SessionKind }) {
   useEffect(() => {
     if (started.current) return
     started.current = true
-    let cancelled = false
     ;(async () => {
-      // A single item, when arriving from a weak-link row on Progress.
-      const focused = focusItemId ? await db.items.get(focusItemId) : undefined
-      const items = focused
-        ? [focused]
-        : kind === 'cold'
-          ? await coldCheckCandidates(Date.now(), 10)
-          : await buildQueue({ dailyNewCap: settings.dailyNewCap, limit: 60 })
+      const items = await pickItems({
+        kind,
+        focusItemId,
+        practiseTextId,
+        dailyNewCap: settings.dailyNewCap,
+      })
       const entries = await hydrate(items)
-      if (cancelled) return
       if (!entries.length) {
         setEmpty(true)
         setLoading(false)
         return
       }
-      session.start(kind, entries, settings.defaultResponseMode, settings.hintAggressiveness)
+      session.start(kind, entries)
       setLoading(false)
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [
-    focusItemId,
-    kind,
-    session,
-    settings.dailyNewCap,
-    settings.defaultResponseMode,
-    settings.hintAggressiveness,
-  ])
+  }, [focusItemId, kind, practiseTextId, session, settings.dailyNewCap])
 
-  if (loading) return <Centered>Loading…</Centered>
+  if (loading) return <Centered>{t('common.loading')}</Centered>
 
   if (empty) {
     return (
       <Centered>
         <p className="text-base">
-          {kind === 'cold'
-            ? 'Nothing has been left alone for a month yet. Come back later.'
-            : 'Nothing due. Enjoy the quiet.'}
+          {kind === 'cold' ? t('review.nothingCold') : t('review.nothingDue')}
         </p>
         <Link to="/" className="btn-secondary mt-6">
-          Back to today
+          {t('review.backToToday')}
         </Link>
       </Centered>
     )
@@ -92,7 +81,32 @@ export default function Review({ kind = 'review' }: { kind?: SessionKind }) {
   return <Room kind={kind} />
 }
 
-// --- loading ---------------------------------------------------------------
+// --- picking what to show --------------------------------------------------
+
+async function pickItems({
+  kind,
+  focusItemId,
+  practiseTextId,
+  dailyNewCap,
+}: {
+  kind: SessionKind
+  focusItemId: string | null
+  practiseTextId: string | null
+  dailyNewCap: number
+}) {
+  if (focusItemId) {
+    const item = await db.items.get(focusItemId)
+    return item ? [item] : []
+  }
+  // Practice ignores due dates and the daily cap: the reader asked for this
+  // surah now, and refusing them is the thing that made the app feel locked.
+  if (practiseTextId) {
+    const items = await getItems(practiseTextId)
+    return items.filter((i) => i.intent !== 'paused').sort(readingOrder)
+  }
+  if (kind === 'cold') return coldCheckCandidates(Date.now(), 10)
+  return buildQueue({ dailyNewCap, limit: 60 })
+}
 
 async function hydrate(items: Awaited<ReturnType<typeof buildQueue>>): Promise<SessionEntry[]> {
   const textIds = [...new Set(items.map((i) => i.textId))]
@@ -118,55 +132,53 @@ async function hydrate(items: Awaited<ReturnType<typeof buildQueue>>): Promise<S
   })
 }
 
-// --- the quiet room --------------------------------------------------------
+// --- the room --------------------------------------------------------------
 
 function Room({ kind }: { kind: SessionKind }) {
   const navigate = useNavigate()
   const settings = useSettings()
-  const {
-    entries,
-    marks,
-    index,
-    phase,
-    mode,
-    draft,
-    setMode,
-    moreHint,
-    peek,
-    showMeaning,
-    reveal,
-    markChecked,
-    beginTest,
-    advance,
-  } = useSession()
+  const t = useT()
+  const { entries, marks, index, phase, mode, draft, setMode, peek, reveal, markChecked, beginTest, advance } =
+    useSession()
 
   const entry = entries[index]
   const [peekSignal, setPeekSignal] = useState(0)
   const [busy, setBusy] = useState(false)
   const interference = useInterference()
+  const audio = useAudio(entry?.text)
+
+  const answerSegment = entry
+    ? entry.item.type === 'link'
+      ? (entry.nextSegment ?? entry.segment)
+      : entry.segment
+    : undefined
 
   const meaning = useMemo(
-    () => (entry ? resolveMeaning(entry.segment, entry.text, settings) : {}),
-    [entry, settings],
+    () => (entry && answerSegment ? resolveMeaning(answerSegment, entry.text, settings) : {}),
+    [answerSegment, entry, settings],
+  )
+  const translit = useMemo(
+    () =>
+      entry && answerSegment ? resolveTransliteration(answerSegment, entry.text, settings) : undefined,
+    [answerSegment, entry, settings],
   )
 
-  // Peeks are not allowed in a cold check — that is the whole point of one.
+  // Looking is allowed, and it lowers the ceiling. A cold check allows nothing.
   const peekable = kind !== 'cold'
-  const capped = draft.peeks > 0 || draft.meaningShown || draft.errors.length > 0
-
-  const onPeek = useCallback(() => peek(), [peek])
+  const capped = draft.peeks > 0 || draft.errors.length > 0
 
   const grade = useCallback(
     async (rating: GradeRating) => {
       if (!entry || busy) return
       setBusy(true)
+      audio.stop()
       try {
         const updated = await recordAttempt({
           item: entry.item,
           method: mode,
           rating,
           peeks: draft.peeks,
-          meaningShown: draft.meaningShown,
+          meaningShown: false,
           durationMs: Date.now() - draft.startedAt,
           hintLevel: draft.hintLevel,
           errors: draft.errors,
@@ -179,7 +191,7 @@ function Room({ kind }: { kind: SessionKind }) {
         setBusy(false)
       }
     },
-    [advance, busy, draft, entry, kind, mode, settings.desiredRetention],
+    [advance, audio, busy, draft, entry, kind, mode, settings.desiredRetention],
   )
 
   useEffect(() => {
@@ -189,7 +201,7 @@ function Room({ kind }: { kind: SessionKind }) {
       if (e.key === ' ' && phase !== 'answer') {
         e.preventDefault()
         if (phase === 'learn') beginTest()
-        else if (mode === 'self_grade') reveal()
+        else reveal()
       }
       if ((e.key === 'p' || e.key === 'P') && peekable && phase === 'prompt') {
         e.preventDefault()
@@ -198,30 +210,29 @@ function Room({ kind }: { kind: SessionKind }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [beginTest, mode, peekable, phase, reveal])
+  }, [beginTest, peekable, phase, reveal])
 
-  if (!entry) return null
+  if (!entry || !answerSegment) return null
 
   const { item, segment, nextSegment, text } = entry
-  const answerSegment = item.type === 'link' ? (nextSegment ?? segment) : segment
   const ref =
     item.type === 'link'
       ? `${segment.ref ?? segment.index + 1} → ${nextSegment?.ref ?? ''}`
       : (segment.ref ?? String(segment.index + 1))
-
   const showAnswer = phase === 'answer'
-  const level: HintLevel = showAnswer ? 0 : draft.hintLevel
 
   return (
     <div className="min-h-dvh">
-      {/* No nav in here. One back affordance and the marks. */}
       <header className="sticky top-0 z-10 border-b border-rule bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-column items-center gap-3 px-5 py-3">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => {
+              audio.stop()
+              navigate('/')
+            }}
             className="btn-text px-1"
-            aria-label="Leave this session"
+            aria-label={t('review.leave')}
           >
             ←
           </button>
@@ -229,10 +240,7 @@ function Room({ kind }: { kind: SessionKind }) {
             <p className="truncate text-small">
               {text.title} {ref}
             </p>
-            <p className="text-micro text-ink-soft">
-              {ITEM_TYPE_LABELS[item.type]}
-              {kind === 'cold' && ' · cold check'}
-            </p>
+            {kind === 'cold' && <p className="text-micro text-ink-soft">{t('review.coldLabel')}</p>}
           </div>
           <SessionMarks marks={marks} current={index} />
         </div>
@@ -241,112 +249,94 @@ function Room({ kind }: { kind: SessionKind }) {
       <div
         className={[
           'mx-auto flex max-w-column flex-col px-5 pt-8',
-          phase === 'learn'
-            ? 'pb-16'
-            : 'min-h-[calc(100dvh-4.25rem)] justify-center pb-44',
+          phase === 'learn' ? 'pb-16' : 'min-h-[calc(100dvh-4.25rem)] justify-center pb-52',
         ].join(' ')}
       >
         {phase === 'learn' ? (
           <LearnPane
             entry={entry}
+            segment={answerSegment}
             meaning={meaning}
-            translit={resolveTransliteration(
-              item.type === 'link' ? (nextSegment ?? segment) : segment,
-              text,
-              settings,
-            )}
+            translit={translit}
+            audio={audio}
             onReady={beginTest}
           />
         ) : (
           <>
-            <Prompt
-              entry={entry}
-              level={level}
-              peekable={peekable && !showAnswer}
-              onPeek={onPeek}
-              peekSignal={peekSignal}
-              showAnswer={showAnswer}
-              meaningText={meaning.tr?.text ?? meaning.en?.text}
-              meaningShown={draft.meaningShown}
-              mode={mode}
-              suppressAnswerBlock={showAnswer && draft.checked}
-            />
+            {/* Context for a join: the tail of the line before it. */}
+            {item.type === 'link' && (
+              <>
+                <InkText
+                  text={splitWords(segment.content).slice(-TAIL_WORDS).join(' ')}
+                  level={0}
+                  dir={text.dir}
+                  lang={text.lang}
+                  className={passageClass(text)}
+                />
+                <hr className="my-6 border-rule" />
+                <p className="label mb-3">{t('review.whatComesNext')}</p>
+              </>
+            )}
 
-            {!showAnswer && mode === 'order_tap' && item.type !== 'meaning' && (
-              <div className="mt-8">
-                <OrderTap
-                  content={answerSegment.content}
+            {item.type === 'meaning' && (
+              <>
+                <InkText
+                  text={segment.content}
+                  words={segmentWords(segment)}
+                  level={0}
+                  dir={text.dir}
+                  lang={text.lang}
+                  className={passageClass(text)}
+                />
+                <hr className="my-6 border-rule" />
+                <p className="label mb-3">{t('review.whatDoesItMean')}</p>
+              </>
+            )}
+
+            {item.type === 'meaning' ? (
+              showAnswer ? (
+                <p className="meaning text-ink">{meaning.tr?.text ?? meaning.en?.text}</p>
+              ) : (
+                <p className="text-small text-ink-soft">{t('review.recallPrompt')}</p>
+              )
+            ) : (
+              <>
+                <InkText
+                  text={answerSegment.content}
                   words={segmentWords(answerSegment)}
+                  level={showAnswer ? 0 : draft.hintLevel}
                   dir={text.dir}
                   lang={text.lang}
-                  passageClassName={passageClassSmall(text)}
-                  wordClassName={wordClass(text)}
-                  onComplete={(errors) => markChecked(errors)}
+                  className={passageClass(text)}
+                  peekable={peekable && !showAnswer}
+                  onPeek={peek}
+                  peekSignal={peekSignal}
+                  activeWordIndex={audio.playingIndex != null ? audio.activeWord : null}
+                  errorWordIndices={showAnswer ? draft.errors.map((e) => e.wordIndex) : undefined}
                 />
-              </div>
+                {!showAnswer && (
+                  <p className="mt-6 text-small text-ink-soft">{t('review.recallPrompt')}</p>
+                )}
+              </>
             )}
 
-            {!showAnswer && mode === 'recite_asr' && item.type !== 'meaning' && (
-              <div className="mt-8">
-                <Recite
-                  expectedWords={segmentWords(answerSegment)}
-                  dir={text.dir}
-                  lang={text.lang}
-                  passageClassName={passageClassSmall(text)}
-                  onChecked={(check) =>
-                    markChecked(
-                      check.missing.map((wordIndex) => ({ wordIndex, kind: 'missing' })),
-                      check.heard,
-                    )
-                  }
-                />
-              </div>
-            )}
-
-            {!showAnswer && mode === 'type_initials' && item.type !== 'meaning' && (
-              <div className="mt-8">
-                <TypeInitials
-                  words={segmentWords(answerSegment)}
-                  translits={answerSegment.words?.map((w) => w.translit)}
-                  dir={text.dir}
-                  lang={text.lang}
-                  wordClassName={wordClass(text)}
-                  onComplete={(errors) => markChecked(errors)}
-                />
-              </div>
-            )}
-
-            {/*
-              The transliteration is the line itself in Latin letters, so it is
-              never a hint — it appears only once the answer is out.
-            */}
             {showAnswer && (
-              <Transliteration
-                line={resolveTransliteration(answerSegment, text, settings)}
-                className="mt-4"
-              />
-            )}
-
-            {/*
-              Shown only after the answer, and only here: the moment you have
-              just recalled a line is when knowing its twin is worth something.
-            */}
-            {showAnswer && (
-              <SimilarPassages
-                matches={interference.resolve(answerSegment.id)}
-                ownDiffering={interference.resolve(answerSegment.id)[0]?.differing}
-              />
-            )}
-
-            {showAnswer && draft.checked && (
-              <CheckResult
-                words={segmentWords(answerSegment)}
-                errors={draft.errors}
-                heard={draft.heard}
-                dir={text.dir}
-                lang={text.lang}
-                passageClassName={passageClassSmall(text)}
-              />
+              <>
+                <Transliteration line={translit} className="mt-4" />
+                {meaning.tr && item.type !== 'meaning' && (
+                  <p className="meaning mt-3">{meaning.tr.text}</p>
+                )}
+                {audio.available && answerSegment.audio && (
+                  <button
+                    type="button"
+                    className="btn-text mt-4 self-start px-0"
+                    onClick={() => audio.playSegment(answerSegment)}
+                  >
+                    {audio.playingIndex != null ? `■ ${t('text.stop')}` : `▶ ${t('text.play')}`}
+                  </button>
+                )}
+                <SimilarPassages matches={interference.resolve(answerSegment.id)} />
+              </>
             )}
           </>
         )}
@@ -355,56 +345,50 @@ function Room({ kind }: { kind: SessionKind }) {
       {phase !== 'learn' && (
         <footer className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
           <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <PeekDots peeks={draft.peeks} />
             {showAnswer ? (
-              <div className="mt-2">
-                <GradeButtons
-                  card={item.fsrs}
-                  desiredRetention={settings.desiredRetention}
-                  capped={capped}
-                  onGrade={grade}
-                />
-                {capped && (
-                  <p className="mt-2 text-micro text-ink-soft">
-                    {draft.errors.length > 0
-                      ? 'Easy is off after a wrong word.'
-                      : 'Easy is off after a peek.'}
+              <>
+                <p className="mb-2 text-center text-base">{t('review.didYouRemember')}</p>
+                <GradeButtons capped={capped} onGrade={grade} />
+                <p className="mt-2 text-center text-micro text-ink-soft">
+                  {capped ? t('review.easyOffAfterPeek') : t('review.gradeHint')}
+                </p>
+              </>
+            ) : mode === 'recite_asr' && item.type !== 'meaning' ? (
+              <Recite
+                expectedWords={segmentWords(answerSegment)}
+                dir={text.dir}
+                lang={text.lang}
+                passageClassName={passageClassSmall(text)}
+                onChecked={(check) =>
+                  markChecked(
+                    check.missing.map((wordIndex) => ({ wordIndex, kind: 'missing' })),
+                    check.heard,
+                  )
+                }
+                onCancel={() => setMode('self_grade')}
+              />
+            ) : (
+              <>
+                <button type="button" className="btn-primary w-full py-3" onClick={reveal}>
+                  {t('review.show')}
+                </button>
+                {settings.reciteEnabled && item.type !== 'meaning' && (
+                  <button
+                    type="button"
+                    className="btn-text mt-1 w-full"
+                    onClick={() => setMode('recite_asr')}
+                  >
+                    🎤 {t('review.recite')}
+                  </button>
+                )}
+                {draft.peeks > 0 && (
+                  <p className="mt-1 text-center text-micro text-ink-soft">
+                    {t(draft.peeks === 1 ? 'review.peeks' : 'review.peeksPlural', {
+                      count: draft.peeks,
+                    })}
                   </p>
                 )}
-              </div>
-            ) : (
-              <div className="mt-2 space-y-2">
-                {mode === 'self_grade' && (
-                  <button type="button" className="btn-primary w-full" onClick={reveal}>
-                    Show answer
-                  </button>
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-1">
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={moreHint}
-                    disabled={draft.hintLevel === 0 || kind === 'cold'}
-                    title={kind === 'cold' ? 'No hints in a cold check' : undefined}
-                  >
-                    More hint
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={showMeaning}
-                    disabled={draft.meaningShown || !(meaning.tr || meaning.en)}
-                  >
-                    Meaning
-                  </button>
-                  <ModeSwitch
-                    mode={mode}
-                    disabled={item.type === 'meaning'}
-                    reciteEnabled={settings.reciteEnabled}
-                    onChange={setMode}
-                  />
-                </div>
-              </div>
+              </>
             )}
           </div>
         </footer>
@@ -417,36 +401,48 @@ function Room({ kind }: { kind: SessionKind }) {
 
 function LearnPane({
   entry,
+  segment,
   meaning,
   translit,
+  audio,
   onReady,
 }: {
   entry: SessionEntry
+  segment: SegmentRecord
   meaning: ReturnType<typeof resolveMeaning>
   translit: ReturnType<typeof resolveTransliteration>
+  audio: ReturnType<typeof useAudio>
   onReady: () => void
 }) {
-  const { segment, nextSegment, item, text } = entry
-  const shown = item.type === 'link' ? (nextSegment ?? segment) : segment
+  const { text } = entry
+  const t = useT()
   return (
     <div>
-      <p className="label mb-4">Learn — nothing is graded here</p>
+      <p className="label mb-4">{t('review.learnTitle')}</p>
       <InkText
-        text={shown.content}
-        words={segmentWords(shown)}
+        text={segment.content}
+        words={segmentWords(segment)}
         level={0}
         dir={text.dir}
         lang={text.lang}
         className={passageClass(text)}
+        activeWordIndex={audio.playingIndex != null ? audio.activeWord : null}
       />
       <Transliteration line={translit} className="mt-3" />
-      {meaning.tr && <p className="meaning mt-6">{meaning.tr.text}</p>}
-      {meaning.en && <p className="meaning mt-3">{meaning.en.text}</p>}
-      {shown.words && shown.words.length > 0 && (
+      {meaning.tr && <p className="meaning mt-5">{meaning.tr.text}</p>}
+      {meaning.en && <p className="meaning mt-2">{meaning.en.text}</p>}
+
+      {audio.available && segment.audio && (
+        <button type="button" className="btn-secondary mt-6" onClick={() => audio.playSegment(segment)}>
+          {audio.playingIndex != null ? `■ ${t('text.stop')}` : `▶ ${t('text.play')}`}
+        </button>
+      )}
+
+      {segment.words && segment.words.length > 0 && (
         <div className="mt-8">
-          <p className="label mb-2">Word by word</p>
+          <p className="label mb-2">{t('text.words')}</p>
           <div className="flex flex-wrap gap-x-5 gap-y-3" dir={text.dir}>
-            {shown.words.map((w, i) => (
+            {segment.words.map((w, i) => (
               <span key={i} className="text-center">
                 <span className={`block ${wordClass(text)}`}>{w.ar}</span>
                 {w.translit && (
@@ -454,208 +450,22 @@ function LearnPane({
                     {w.translit}
                   </span>
                 )}
-                {w.en && (
-                  <span className="block text-micro text-ink-soft/70" dir="ltr">
-                    {w.en}
-                  </span>
-                )}
               </span>
             ))}
           </div>
         </div>
       )}
-      <button type="button" className="btn-primary mt-10 w-full sm:w-auto" onClick={onReady}>
-        Ready to check
+
+      <button type="button" className="btn-primary mt-10 w-full py-3" onClick={onReady}>
+        {t('review.ready')}
       </button>
     </div>
   )
 }
 
-function Prompt({
-  entry,
-  level,
-  peekable,
-  onPeek,
-  peekSignal,
-  showAnswer,
-  meaningText,
-  meaningShown,
-  mode,
-  suppressAnswerBlock = false,
-}: {
-  entry: SessionEntry
-  level: HintLevel
-  peekable: boolean
-  onPeek: () => void
-  peekSignal: number
-  showAnswer: boolean
-  meaningText?: string
-  meaningShown: boolean
-  mode: string
-  /** The diff below is the answer; do not print the line twice. */
-  suppressAnswerBlock?: boolean
-}) {
-  const { item, segment, nextSegment, text } = entry
-  const passage = passageClass(text)
-
-  if (item.type === 'link') {
-    const tail = splitWords(segment.content).slice(-TAIL_WORDS).join(' ')
-    return (
-      <div>
-        <InkText text={tail} level={0} dir={text.dir} lang={text.lang} className={passage} />
-        <hr className="my-6 border-rule" />
-        <p className="label mb-3">What comes next?</p>
-        {!suppressAnswerBlock && (
-          <InkText
-            text={nextSegment?.content ?? ''}
-            words={nextSegment ? segmentWords(nextSegment) : undefined}
-            level={level}
-            dir={text.dir}
-            lang={text.lang}
-            className={passage}
-            peekable={peekable && mode === 'self_grade'}
-            onPeek={onPeek}
-            peekSignal={peekSignal}
-          />
-        )}
-        {meaningShown && meaningText && <p className="meaning mt-6">{meaningText}</p>}
-      </div>
-    )
-  }
-
-  if (item.type === 'meaning') {
-    const toMeaning = item.meaningDirection !== 'from_meaning'
-    return toMeaning ? (
-      <div>
-        <InkText
-          text={segment.content}
-          words={segmentWords(segment)}
-          level={0}
-          dir={text.dir}
-          lang={text.lang}
-          className={passage}
-        />
-        <hr className="my-6 border-rule" />
-        <p className="label mb-3">What does it mean?</p>
-        {showAnswer ? (
-          <p className="meaning text-ink">{meaningText}</p>
-        ) : (
-          <p className="text-small text-ink-soft">Say it, then show the answer.</p>
-        )}
-      </div>
-    ) : (
-      <div>
-        <p className="meaning text-ink">{meaningText}</p>
-        <hr className="my-6 border-rule" />
-        <p className="label mb-3">Which line is this?</p>
-        <InkText
-          text={segment.content}
-          words={segmentWords(segment)}
-          level={level}
-          dir={text.dir}
-          lang={text.lang}
-          className={passage}
-          peekable={peekable}
-          onPeek={onPeek}
-          peekSignal={peekSignal}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      {!suppressAnswerBlock && (
-        <InkText
-          text={segment.content}
-          words={segmentWords(segment)}
-          level={level}
-          dir={text.dir}
-          lang={text.lang}
-          className={passage}
-          peekable={peekable && mode === 'self_grade'}
-          onPeek={onPeek}
-          peekSignal={peekSignal}
-        />
-      )}
-      {meaningShown && meaningText && <p className="meaning mt-6">{meaningText}</p>}
-    </div>
-  )
-}
-
-function CheckResult({
-  words: wordList,
-  errors,
-  heard,
-  dir,
-  lang,
-  passageClassName,
-}: {
-  words: string[]
-  errors: { wordIndex: number; kind: ErrorKind }[]
-  heard?: string
-  dir: 'rtl' | 'ltr'
-  lang: string
-  passageClassName: string
-}) {
-  return (
-    <div className="mt-8 border-t border-rule pt-6">
-      <p className="label mb-3">
-        {errors.length === 0
-          ? 'Every word in place.'
-          : `${errors.length} off — marked below.`}
-      </p>
-      <InitialsDiff
-        words={wordList}
-        errors={errors}
-        dir={dir}
-        lang={lang}
-        className={passageClassName}
-      />
-      {/* What the app actually heard, because that is what it is claiming. */}
-      {heard !== undefined && (
-        <p className="mt-3 text-micro text-ink-soft" dir={dir} lang={lang}>
-          Heard: {heard || '(nothing)'}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function ModeSwitch({
-  mode,
-  disabled,
-  reciteEnabled,
-  onChange,
-}: {
-  mode: string
-  disabled: boolean
-  reciteEnabled: boolean
-  onChange: (mode: 'self_grade' | 'order_tap' | 'type_initials' | 'recite_asr') => void
-}) {
-  return (
-    <label className="flex items-center gap-2 text-micro text-ink-soft">
-      <span className="sr-only">Response mode</span>
-      <select
-        value={mode}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value as 'self_grade')}
-        className="min-h-[44px] rounded-md border border-rule bg-paper-raised px-2 text-micro
-          text-ink-soft disabled:opacity-40"
-      >
-        <option value="self_grade">Self-check</option>
-        <option value="order_tap">Tap in order</option>
-        <option value="type_initials">Type initials</option>
-        {reciteEnabled && <option value="recite_asr">Recite out loud</option>}
-      </select>
-    </label>
-  )
-}
-
-// --- end -------------------------------------------------------------------
-
 function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void }) {
   const { marks, passedFirstTime, entries, reset } = useSession()
+  const t = useT()
   const total = marks.length
   const missed = marks.filter((m) => m === 'missed').length
   const saved = useRef(false)
@@ -663,13 +473,15 @@ function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void
   useEffect(() => {
     if (kind !== 'cold' || saved.current || !total) return
     saved.current = true
-    db.coldChecks.add({
-      id: newId(),
-      at: Date.now(),
-      itemIds: entries.map((e) => e.item.id),
-      passedFirstTime,
-      total,
-    })
+    import('@/db/db').then(({ db: database, newId }) =>
+      database.coldChecks.add({
+        id: newId(),
+        at: Date.now(),
+        itemIds: entries.map((e) => e.item.id),
+        passedFirstTime,
+        total,
+      }),
+    )
   }, [entries, kind, passedFirstTime, total])
 
   return (
@@ -677,19 +489,15 @@ function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void
       {kind === 'cold' ? (
         <>
           <p className="text-display">
-            You recalled {passedFirstTime} of {total} first-time.
+            {t('review.coldResult', { passed: passedFirstTime, total })}
           </p>
-          <p className="mt-3 text-small text-ink-soft">
-            That is the honest number. The ones you missed are back in the schedule.
-          </p>
+          <p className="mt-3 text-small text-ink-soft">{t('review.coldNote')}</p>
         </>
       ) : (
         <>
-          <p className="text-display">Done — {total} items.</p>
+          <p className="text-display">{t('review.doneTitle', { count: total })}</p>
           <p className="mt-3 text-small text-ink-soft">
-            {missed === 0
-              ? 'Nothing missed.'
-              : `${missed} missed, and each one comes back sooner.`}
+            {missed === 0 ? t('review.doneNoneMissed') : t('review.doneMissed', { count: missed })}
           </p>
         </>
       )}
@@ -701,7 +509,7 @@ function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void
           onLeave()
         }}
       >
-        Back to today
+        {t('review.backToToday')}
       </button>
     </Centered>
   )

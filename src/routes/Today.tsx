@@ -10,9 +10,11 @@ import {
 } from '@/db/repo'
 import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { useSettings } from '@/state/settings'
+import { useT } from '@/i18n'
 
 export default function Today() {
   const dailyNewCap = useSettings((s) => s.dailyNewCap)
+  const t = useT()
 
   const data = useLiveQuery(async () => {
     const [queue, cold, seconds, texts, items] = await Promise.all([
@@ -41,7 +43,7 @@ export default function Today() {
     return { queue, cold, seconds, learning, hasAnything: items.length > 0 }
   }, [dailyNewCap])
 
-  if (!data) return <p className="text-small text-ink-soft">Loading…</p>
+  if (!data) return <p className="text-small text-ink-soft">{t('common.loading')}</p>
 
   const { queue, cold, seconds, learning, hasAnything } = data
   const minutes = Math.max(1, Math.round((queue.length * seconds) / 60))
@@ -49,16 +51,14 @@ export default function Today() {
   if (!hasAnything) {
     return (
       <section>
-        <h1 className="text-display">Nothing checked yet — start with one line.</h1>
-        <p className="mt-3 text-base text-ink-soft">
-          No text yet. Add one, or open the Qur&apos;an library.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link to="/library" className="btn-primary">
-            Open the Qur&apos;an library
+        <h1 className="text-display">{t('today.emptyTitle')}</h1>
+        <p className="mt-3 text-base text-ink-soft">{t('today.emptyBody')}</p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link to="/library" className="btn-primary py-3">
+            {t('today.openQuran')}
           </Link>
-          <Link to="/add" className="btn-secondary">
-            Add your own text
+          <Link to="/add" className="btn-secondary py-3">
+            {t('today.addOwn')}
           </Link>
         </div>
       </section>
@@ -69,35 +69,32 @@ export default function Today() {
     <section>
       <p className="text-large">
         {queue.length === 0
-          ? 'Nothing due right now.'
-          : `${queue.length} due — about ${minutes} minute${minutes === 1 ? '' : 's'}.`}
+          ? t('today.nothingDue')
+          : t('today.due', { count: queue.length, minutes })}
       </p>
 
       {queue.length > 0 ? (
         <Link to="/review" className="btn-primary mt-5 w-full py-4 text-base sm:w-auto sm:px-10">
-          Start review
+          {t('today.start')}
         </Link>
       ) : (
-        <Link to="/library" className="btn-secondary mt-5 w-full sm:w-auto">
-          Add more to your plan
+        <Link to="/library" className="btn-secondary mt-5 w-full py-3 sm:w-auto">
+          {t('today.addMore')}
         </Link>
       )}
 
       {cold.length > 0 && (
         <div className="card mt-8 p-4">
-          <p className="text-small">
-            Cold check: {cold.length} passage{cold.length === 1 ? '' : 's'} you haven&apos;t seen in
-            over a month.
-          </p>
+          <p className="text-small">{t('today.coldTitle', { count: cold.length })}</p>
           <Link to="/cold-check" className="btn-secondary mt-3">
-            Run a cold check
+            {t('today.coldStart')}
           </Link>
         </div>
       )}
 
       {learning.length > 0 && (
         <div className="mt-10">
-          <h2 className="label mb-3">Learning</h2>
+          <h2 className="label mb-3">{t('today.learning')}</h2>
           <ul className="divide-y divide-rule border-y border-rule">
             {learning.slice(0, 5).map((summary) => (
               <li key={summary.text.id}>
@@ -113,7 +110,9 @@ export default function Today() {
                   </span>
                   <IntentBadge intent={summary.intent} />
                   {summary.dueNow > 0 && (
-                    <span className="text-micro text-ink-soft">{summary.dueNow} due</span>
+                    <span className="text-micro text-ink-soft">
+                      {t('today.dueShort', { count: summary.dueNow })}
+                    </span>
                   )}
                 </Link>
               </li>

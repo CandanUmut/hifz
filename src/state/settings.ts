@@ -2,19 +2,26 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type ThemeChoice = 'auto' | 'gunduz' | 'gece'
-export type ResponseMode = 'self_grade' | 'order_tap' | 'type_initials' | 'recite_asr'
-export type HintAggressiveness = 'gentle' | 'normal' | 'steep'
+export type UiLang = 'tr' | 'en'
+/**
+ * Two ways to answer, and that is deliberate. Typing first letters and tapping
+ * words into order were dropped: they tested spelling and layout memory rather
+ * than recall, and they made the screen unreadable.
+ */
+export type ResponseMode = 'self_grade' | 'recite_asr'
 
 export interface Settings {
+  /** null until the reader has picked one — that is what triggers the chooser. */
+  lang: UiLang | null
+  /** Whether the three-screen explanation has been seen. */
+  introSeen: boolean
   theme: ThemeChoice
   /** Translation edition ids as they appear in a pack's `translations` map. */
   trEdition: string
   enEdition: string
-  defaultResponseMode: ResponseMode
   /** FSRS desired retention, 0.85–0.95. */
   desiredRetention: number
   dailyNewCap: number
-  hintAggressiveness: HintAggressiveness
   /** Remembered per user on the text detail page. */
   showTranslationTr: boolean
   showTranslationEn: boolean
@@ -29,13 +36,13 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  lang: null,
+  introSeen: false,
   theme: 'auto',
   trEdition: 'elmalili-sadelestirilmis',
   enEdition: 'clear-quran',
-  defaultResponseMode: 'self_grade',
   desiredRetention: 0.9,
   dailyNewCap: 10,
-  hintAggressiveness: 'normal',
   showTranslationTr: true,
   showTranslationEn: false,
   showTransliteration: true,

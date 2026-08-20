@@ -2,18 +2,25 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addToPlan, createUserText } from '@/db/repo'
 import { DEFAULT_ITEM_TYPES, type ItemTypeChoice } from '@/engine/items'
+import { useT } from '@/i18n'
+import type { StringKey } from '@/i18n/strings'
 import {
   guessDirection,
   mergeAt,
   segmentText,
   splitAt,
-  STRATEGY_LABELS,
   type SegmentationStrategy,
 } from '@/engine/segmentation'
 
 type Step = 'paste' | 'segment' | 'confirm'
 
-const STRATEGIES = Object.keys(STRATEGY_LABELS) as SegmentationStrategy[]
+const STRATEGIES: { id: SegmentationStrategy; key: StringKey }[] = [
+  { id: 'newline', key: 'add.strategy.newline' },
+  { id: 'blank_line', key: 'add.strategy.blank_line' },
+  { id: 'sentence', key: 'add.strategy.sentence' },
+  { id: 'verse_marker', key: 'add.strategy.verse_marker' },
+  { id: 'word_count', key: 'add.strategy.word_count' },
+]
 
 export default function AddText() {
   const navigate = useNavigate()
@@ -27,6 +34,7 @@ export default function AddText() {
   const [edited, setEdited] = useState<string[] | null>(null)
   const [types, setTypes] = useState<ItemTypeChoice>(DEFAULT_ITEM_TYPES)
   const [saving, setSaving] = useState(false)
+  const t = useT()
 
   const auto = useMemo(
     () => segmentText(body, strategy, { wordsPerSegment }),
@@ -60,27 +68,27 @@ export default function AddText() {
   return (
     <section className="pb-10">
       <div className="flex items-center gap-3">
-        <h1 className="text-large font-medium">Add a text</h1>
+        <h1 className="text-large font-medium">{t('add.title')}</h1>
         <span className="ms-auto text-micro text-ink-soft">
-          {step === 'paste' ? '1' : step === 'segment' ? '2' : '3'} of 3
+          {t('add.step', { step: step === 'paste' ? 1 : step === 'segment' ? 2 : 3 })}
         </span>
       </div>
 
       {step === 'paste' && (
         <div className="mt-6 space-y-5">
           <label className="block">
-            <span className="text-small">Title</span>
+            <span className="text-small">{t('add.name')}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ṣalāt al-ḥājah, a poem, a speech…"
+              placeholder={t('add.namePlaceholder')}
               className="mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3
                 text-base"
             />
           </label>
 
           <label className="block">
-            <span className="text-small">The text</span>
+            <span className="text-small">{t('add.text')}</span>
             <textarea
               value={body}
               onChange={(e) => {
@@ -90,13 +98,13 @@ export default function AddText() {
               rows={10}
               dir={resolvedDir}
               className="mt-1 w-full rounded-md border border-rule bg-paper-raised p-3 text-base"
-              placeholder="Paste it here. One line per unit is easiest, but you can split it in the next step."
+              placeholder={t('add.textPlaceholder')}
             />
           </label>
 
           <div className="flex flex-wrap gap-4">
             <label className="block">
-              <span className="text-small">Language tag</span>
+              <span className="text-small">lang</span>
               <input
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
@@ -106,7 +114,7 @@ export default function AddText() {
               />
             </label>
             <label className="block">
-              <span className="text-small">Direction</span>
+              <span className="text-small">dir</span>
               <select
                 value={dir}
                 onChange={(e) => setDir(e.target.value as typeof dir)}
@@ -120,10 +128,7 @@ export default function AddText() {
             </label>
           </div>
 
-          <p className="text-micro text-ink-soft">
-            {auto.length} segment{auto.length === 1 ? '' : 's'} detected. This text stays on your
-            device — it is never uploaded.
-          </p>
+          <p className="text-micro text-ink-soft">{t('add.detected', { count: auto.length })}</p>
 
           <button
             type="button"
@@ -131,7 +136,7 @@ export default function AddText() {
             disabled={!body.trim()}
             onClick={() => setStep('segment')}
           >
-            Next
+            {t('add.next')}
           </button>
         </div>
       )}
@@ -139,25 +144,25 @@ export default function AddText() {
       {step === 'segment' && (
         <div className="mt-6">
           <div className="flex flex-wrap gap-2">
-            {STRATEGIES.map((s) => (
+            {STRATEGIES.map((option) => (
               <button
-                key={s}
+                key={option.id}
                 type="button"
                 onClick={() => {
-                  setStrategy(s)
+                  setStrategy(option.id)
                   setEdited(null)
                 }}
-                aria-pressed={strategy === s}
-                className={strategy === s ? 'btn-primary' : 'btn-secondary'}
+                aria-pressed={strategy === option.id}
+                className={strategy === option.id ? 'btn-primary' : 'btn-secondary'}
               >
-                {STRATEGY_LABELS[s]}
+                {t(option.key)}
               </button>
             ))}
           </div>
 
           {strategy === 'word_count' && (
             <label className="mt-4 block">
-              <span className="text-small">Words per segment — {wordsPerSegment}</span>
+              <span className="text-small">{t('add.wordsPer', { count: wordsPerSegment })}</span>
               <input
                 type="range"
                 min={3}
@@ -173,7 +178,7 @@ export default function AddText() {
           )}
 
           <p className="mt-4 text-micro text-ink-soft">
-            {segments.length} segments. Merge a line into the one above it, or split it in two.
+            {t('add.pieces', { count: segments.length })}
           </p>
 
           <ol className="mt-3 divide-y divide-rule border-y border-rule">
@@ -192,14 +197,14 @@ export default function AddText() {
                     disabled={i === 0}
                     onClick={() => setEdited(mergeAt(segments, i))}
                   >
-                    Merge up
+                    {t('add.mergeUp')}
                   </button>
                   <button
                     type="button"
                     className="btn-text"
                     onClick={() => setEdited(splitAt(segments, i))}
                   >
-                    Split
+                    {t('add.split')}
                   </button>
                 </span>
               </li>
@@ -208,7 +213,7 @@ export default function AddText() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button" className="btn-secondary" onClick={() => setStep('paste')}>
-              Back
+              {t('add.back')}
             </button>
             <button
               type="button"
@@ -216,7 +221,7 @@ export default function AddText() {
               disabled={segments.length === 0}
               onClick={() => setStep('confirm')}
             >
-              Next
+              {t('add.next')}
             </button>
           </div>
         </div>
@@ -225,38 +230,23 @@ export default function AddText() {
       {step === 'confirm' && (
         <div className="mt-6 space-y-6">
           <div>
-            <h2 className="label mb-3">What to schedule</h2>
             <div className="space-y-2">
               <TypeRow
-                label="Lines"
-                hint="Each segment on its own. Always on."
-                checked
-                disabled
-                onChange={() => {}}
-              />
-              <TypeRow
-                label="Joins"
-                hint={`${Math.max(0, segments.length - 1)} joins between consecutive segments — where memorisation actually breaks.`}
+                label={t('add.alsoJoins')}
+                hint={t('add.joinsNote')}
                 checked={types.link}
-                onChange={(v) => setTypes((t) => ({ ...t, link: v }))}
-              />
-              <TypeRow
-                label="Meanings"
-                hint="Needs translations, which this text does not have yet."
-                checked={false}
-                disabled
-                onChange={() => {}}
+                onChange={(v) => setTypes((prev) => ({ ...prev, link: v }))}
               />
             </div>
           </div>
 
           <p className="text-small text-ink-soft">
-            {title.trim() || 'Untitled'} — {segments.length} segments.
+            {title.trim() || '—'} · {t('add.pieces', { count: segments.length })}
           </p>
 
           <div className="flex flex-wrap gap-3">
             <button type="button" className="btn-secondary" onClick={() => setStep('segment')}>
-              Back
+              {t('add.back')}
             </button>
             <button
               type="button"
@@ -264,10 +254,10 @@ export default function AddText() {
               disabled={saving}
               onClick={() => save(true)}
             >
-              Add to plan
+              {t('add.save')}
             </button>
             <button type="button" className="btn-text" disabled={saving} onClick={() => save(false)}>
-              Save for later
+              {t('add.saveLater')}
             </button>
           </div>
         </div>

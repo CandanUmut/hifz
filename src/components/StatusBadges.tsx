@@ -1,17 +1,14 @@
-import {
-  EVIDENCE_LABELS,
-  INTENT_LABELS,
-  type EvidenceRef,
-  type EvidenceTier,
-  type Intent,
-} from '@/engine/types'
-import { evidenceLabel } from '@/engine/evidence'
+import type { EvidenceRef, EvidenceTier, Intent } from '@/engine/types'
+import { useT } from '@/i18n'
+import { relativeDays } from '@/engine/evidence'
+import { COLD_GAP_DAYS } from '@/engine/types'
 
 /**
  * Two badges, never merged. The filled one is the user's word for what they
  * are working on; the outlined one is what the app actually observed.
  */
 export function IntentBadge({ intent }: { intent: Intent }) {
+  const t = useT()
   if (intent === 'not_started') return null
   const tone =
     intent === 'learning'
@@ -21,7 +18,7 @@ export function IntentBadge({ intent }: { intent: Intent }) {
         : 'bg-rule text-ink-soft'
   return (
     <span className={`rounded-full px-2 py-0.5 text-micro font-medium ${tone}`}>
-      {INTENT_LABELS[intent]}
+      {t(`intent.${intent}`)}
     </span>
   )
 }
@@ -35,6 +32,7 @@ export function EvidenceChip({
   tier?: EvidenceTier
   className?: string
 }) {
+  const t = useT()
   const tone =
     tier === 'weak'
       ? 'border-correction/50 text-correction'
@@ -44,9 +42,11 @@ export function EvidenceChip({
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-micro ${tone} ${className}`}
-      title={tier ? EVIDENCE_LABELS[tier] : undefined}
+      title={tier ? t(`evidence.${tier}`) : undefined}
     >
-      {evidenceLabel(last)}
+      {last
+        ? `${t(last.gapDays >= COLD_GAP_DAYS ? 'method.recite_asr' : `method.${last.method}`)} · ${relativeDays(last.at, Date.now(), t)}`
+        : t('evidence.untested')}
     </span>
   )
 }

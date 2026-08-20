@@ -67,8 +67,8 @@
   position: absolute;
   inset-inline: 0;
   bottom: calc((100% - 1em) / 2 + 0.12em);
-  height: 0.07em;
-  min-height: 2px;
+  height: 0.085em;
+  min-height: 3px;
   border-radius: 999px;
   background: currentColor;
   pointer-events: none;
@@ -79,6 +79,12 @@
 .ink-word[role='button'] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* A hidden word should feel touchable before you have touched it. */
+.ink-word[role='button']:hover .ink-word__ghost,
+.ink-word[role='button']:active .ink-word__ghost {
+  opacity: 0.42 !important;
 }
 
 .ink-word[role='button']:focus-visible {

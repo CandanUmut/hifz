@@ -47,17 +47,27 @@ streaks anywhere in the product. The honest metric is the **cold check** — a
 monthly run over things you have not seen in thirty days, starting from blank,
 with no peeks: *"You recalled 7 of 10 first-time."*
 
-## Four ways to answer
+## How a review actually goes
 
-`Self-check` (fastest, lowest confidence) · `Tap in order` · `Type initials` ·
-`Recite out loud`.
+1. The ayah comes up **hidden** — word-shaped marks, nothing readable. Recite it
+   from memory, out loud or in your head.
+2. Stuck? **Tap a word** to uncover just that one. Every word you uncover is
+   recorded, and it takes "Easily" off the table.
+3. **Show the answer**, then answer one plain question — *Did you remember it?* —
+   with *No idea · Barely · Yes · Easily*.
+4. That answer only decides when the ayah comes back. Nobody is marking you.
 
-`Type initials` takes one letter per word **in Arabic or Latin script** —
-`ق` or `q`, whichever your keyboard has. It is generous about the letter and
-strict about the order: ٱللَّهُ answers to `a` or `l`, ٱلصَّمَدُ to `a`, `l` or
-`s`, because the letter someone reaches for past the definite article is the
-one after it. What it holds you to is the word order and the word count, which
-is what it was measuring all along.
+There are two ways to answer and no more: check yourself, or **recite out loud**
+and let the app listen (see below). Typing first letters and dragging words into
+order were removed — they tested spelling and screen layout rather than recall.
+
+Anything in your plan can be revised whenever you like: open it and press
+**Practise**, which ignores due dates entirely.
+
+## Turkish and English
+
+The app asks which language you want the first time it opens, and explains in
+three screens what it is going to ask of you. Both are changeable in Settings.
 
 The last one listens on your device and shows you what it heard — no audio
 leaves the browser. It is opt-in and experimental, because it needs a

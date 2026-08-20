@@ -40,7 +40,9 @@
   /* The rest of the word at level 2 lands at 0.9 × 0.0667 ≈ 0.06 — faint, but
      the shape is still there. */
   --ink-tail-ratio: 0.0667;
-  --ink-ghost: 0.1; /* word-shaped bars at level 3 */
+  /* Word-shaped bars at level 3. Raised from 0.10: these are what you tap
+     when you are stuck, so they have to look like something you can touch. */
+  --ink-ghost: 0.18;
   --ink-fade-duration: 400ms;
   --ink-fade-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }

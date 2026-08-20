@@ -7,22 +7,24 @@ import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { HeatLegend, HeatStrip } from '@/components/HeatStrip'
 import { listPacks, loadManifest, type PackIndexEntry, type PackManifest } from '@/packs/loader'
 import { tierRank } from '@/engine/evidence'
+import { useT } from '@/i18n'
+import type { StringKey } from '@/i18n/strings'
 import type { EvidenceTier, ItemRecord } from '@/engine/types'
 
 type Filter = 'all' | 'in_plan' | 'weak' | 'unchecked'
 type Sort = 'order' | 'weakest' | 'checked'
 
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'in_plan', label: 'In plan' },
-  { id: 'weak', label: 'Weak' },
-  { id: 'unchecked', label: 'Not checked' },
+const FILTERS: { id: Filter; key: StringKey }[] = [
+  { id: 'all', key: 'library.filter.all' },
+  { id: 'in_plan', key: 'library.filter.inPlan' },
+  { id: 'weak', key: 'library.filter.weak' },
+  { id: 'unchecked', key: 'library.filter.unchecked' },
 ]
 
-const SORTS: { id: Sort; label: string }[] = [
-  { id: 'order', label: 'In order' },
-  { id: 'weakest', label: 'Weakest first' },
-  { id: 'checked', label: 'Last checked' },
+const SORTS: { id: Sort; key: StringKey }[] = [
+  { id: 'order', key: 'library.sort.order' },
+  { id: 'weakest', key: 'library.sort.weakest' },
+  { id: 'checked', key: 'library.sort.checked' },
 ]
 
 interface Row {
@@ -41,6 +43,7 @@ export default function Library() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('order')
+  const t = useT()
 
   useEffect(() => {
     let cancelled = false
@@ -87,7 +90,7 @@ export default function Library() {
 
   return (
     <section>
-      <h1 className="text-large font-medium">Library</h1>
+      <h1 className="text-large font-medium">{t('library.title')}</h1>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Filter">
@@ -102,7 +105,7 @@ export default function Library() {
                 filter === f.id ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
               ].join(' ')}
             >
-              {f.label}
+              {t(f.key)}
             </button>
           ))}
         </div>
@@ -115,7 +118,7 @@ export default function Library() {
           >
             {SORTS.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.label}
+                {t(s.key)}
               </option>
             ))}
           </select>
@@ -127,7 +130,7 @@ export default function Library() {
       </div>
 
       {error && (
-        <p className="mt-6 text-small text-correction">Could not load the packs: {error}</p>
+        <p className="mt-6 text-small text-correction">{error}</p>
       )}
 
       {packs.map(({ entry, manifest }) => (
@@ -143,15 +146,13 @@ export default function Library() {
 
       <div className="mt-12">
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-medium">My texts</h2>
+          <h2 className="text-base font-medium">{t('library.mine')}</h2>
           <Link to="/add" className="btn-text ms-auto">
-            Add a text
+            {t('library.addText')}
           </Link>
         </div>
         {userRows.length === 0 ? (
-          <p className="mt-2 text-small text-ink-soft">
-            Nothing of your own yet. A poem, a duʿāʾ, a speech — anything works.
-          </p>
+          <p className="mt-2 text-small text-ink-soft">{t('library.noneOfMine')}</p>
         ) : (
           <ul className="mt-2 divide-y divide-rule border-y border-rule">
             {filterRows(userRows, filter)
@@ -191,6 +192,7 @@ function PackSection({
   }))
 
   const shown = filterRows(rows, filter).sort(sorter(sort))
+  const t = useT()
 
   return (
     <div className="mt-10">
@@ -199,7 +201,7 @@ function PackSection({
         <p className="text-micro text-ink-soft">{manifest.subtitle}</p>
       </div>
       {shown.length === 0 ? (
-        <p className="mt-2 text-small text-ink-soft">Nothing here matches that filter.</p>
+        <p className="mt-2 text-small text-ink-soft">{t('library.noMatch')}</p>
       ) : (
         <ul className="mt-2 divide-y divide-rule border-y border-rule">
           {shown.map((row) => (
@@ -212,6 +214,7 @@ function PackSection({
 }
 
 function TextRow({ row }: { row: Row }) {
+  const t = useT()
   const tiers = tiersFromItems(row.items)
   const intent = deriveIntent(row.items)
   const inPlan = new Set(row.items.map((i) => i.segmentId)).size
@@ -236,8 +239,10 @@ function TextRow({ row }: { row: Row }) {
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="text-micro text-ink-soft">
-            {row.segmentCount} {row.segmentCount === 1 ? 'segment' : 'segments'}
-            {inPlan > 0 && ` · ${inPlan} in plan`}
+            {t(row.packEntry ? 'library.segments' : 'library.segmentsGeneric', {
+              count: row.segmentCount,
+            })}
+            {inPlan > 0 && ` · ${t('library.inPlan', { count: inPlan })}`}
           </span>
           <span className="ms-auto">
             <HeatStrip count={row.segmentCount} tiers={tiers} />

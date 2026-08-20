@@ -1,5 +1,5 @@
 import type { EvidenceTier } from '@/engine/types'
-import { EVIDENCE_LABELS } from '@/engine/types'
+import { useT } from '@/i18n'
 
 /**
  * One square per segment, coloured by evidence tier. Not a progress bar — it
@@ -25,6 +25,7 @@ export function HeatStrip({
   max?: number
   onSelect?: (index: number) => void
 }) {
+  const t = useT()
   const shown = Math.min(count, max)
   const cells = Array.from({ length: shown }, (_, i) => i)
   return (
@@ -32,7 +33,7 @@ export function HeatStrip({
       {cells.map((i) => {
         const tier = tiers.get(i)
         const tone = TONE[tier ?? 'unplanned']
-        const label = `${i + 1}: ${tier ? EVIDENCE_LABELS[tier] : 'not in plan'}`
+        const label = `${i + 1}: ${tier ? t(`evidence.${tier}`) : ''}`
         return onSelect ? (
           <button
             key={i}
@@ -52,13 +53,14 @@ export function HeatStrip({
 }
 
 export function HeatLegend() {
+  const t = useT()
   const entries: EvidenceTier[] = ['untested', 'weak', 'fair', 'strong', 'cold_verified']
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-micro text-ink-soft">
       {entries.map((tier) => (
         <span key={tier} className="inline-flex items-center gap-1.5">
           <span className={`h-3 w-3 rounded-[2px] ${TONE[tier]}`} />
-          {EVIDENCE_LABELS[tier]}
+          {t(`evidence.${tier}`)}
         </span>
       ))}
     </div>

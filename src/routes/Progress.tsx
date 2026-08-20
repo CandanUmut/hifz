@@ -7,7 +7,8 @@ import { db } from '@/db/db'
 import { parseSegmentIndex } from '@/db/repo'
 import { evidenceTier, TIER_ORDER } from '@/engine/evidence'
 import { retrievability } from '@/engine/scheduler'
-import { EVIDENCE_LABELS, type EvidenceTier } from '@/engine/types'
+import type { EvidenceTier } from '@/engine/types'
+import { useT } from '@/i18n'
 
 const TONE: Record<EvidenceTier, string> = {
   untested: 'bg-rule',
@@ -20,6 +21,7 @@ const TONE: Record<EvidenceTier, string> = {
 export default function Progress() {
   const interference = useInterference()
   const [openCluster, setOpenCluster] = useState<string | null>(null)
+  const t = useT()
 
   const data = useLiveQuery(async () => {
     const now = Date.now()
@@ -51,7 +53,7 @@ export default function Progress() {
     return { items, distribution, weakLinks, coldChecks }
   }, [])
 
-  if (!data) return <p className="text-small text-ink-soft">Loading…</p>
+  if (!data) return <p className="text-small text-ink-soft">{t('common.loading')}</p>
 
   const { items, distribution, weakLinks, coldChecks } = data
   const total = items.length
@@ -59,12 +61,10 @@ export default function Progress() {
   if (total === 0) {
     return (
       <section>
-        <h1 className="text-large font-medium">Progress</h1>
-        <p className="mt-3 text-small text-ink-soft">
-          Nothing in your plan yet, so there is nothing honest to show.
-        </p>
+        <h1 className="text-large font-medium">{t('progress.title')}</h1>
+        <p className="mt-3 text-small text-ink-soft">{t('progress.empty')}</p>
         <Link to="/library" className="btn-secondary mt-6">
-          Open the library
+          {t('today.openQuran')}
         </Link>
       </section>
     )
@@ -73,14 +73,12 @@ export default function Progress() {
   return (
     <section className="space-y-12">
       <div>
-        <h1 className="text-large font-medium">Progress</h1>
-        <p className="mt-1 text-small text-ink-soft">
-          {total} items in plan. No streaks here — the cold check is the number that counts.
-        </p>
+        <h1 className="text-large font-medium">{t('progress.title')}</h1>
+        <p className="mt-1 text-small text-ink-soft">{t('progress.summary', { count: total })}</p>
       </div>
 
       <div>
-        <h2 className="label mb-3">Evidence</h2>
+        <h2 className="label mb-3">{t('progress.evidence')}</h2>
         <div className="flex h-4 overflow-hidden rounded-sm border border-rule">
           {TIER_ORDER.map((tier) => {
             const count = distribution.get(tier) ?? 0
@@ -90,7 +88,7 @@ export default function Progress() {
                 key={tier}
                 className={TONE[tier]}
                 style={{ width: `${(count / total) * 100}%` }}
-                title={`${EVIDENCE_LABELS[tier]}: ${count}`}
+                title={`${t(`evidence.${tier}`)}: ${count}`}
               />
             )
           })}
@@ -99,7 +97,7 @@ export default function Progress() {
           {TIER_ORDER.map((tier) => (
             <li key={tier} className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-[2px] ${TONE[tier]}`} />
-              {EVIDENCE_LABELS[tier]}
+              {t(`evidence.${tier}`)}
               <span className="ms-auto tabular-nums">{distribution.get(tier) ?? 0}</span>
             </li>
           ))}
@@ -107,11 +105,9 @@ export default function Progress() {
       </div>
 
       <div>
-        <h2 className="label mb-3">Cold checks</h2>
+        <h2 className="label mb-3">{t('progress.coldChecks')}</h2>
         {coldChecks.length === 0 ? (
-          <p className="text-small text-ink-soft">
-            None yet. One is offered when something has been left alone for a month.
-          </p>
+          <p className="text-small text-ink-soft">{t('progress.noColdChecks')}</p>
         ) : (
           <ul className="flex flex-wrap items-end gap-4">
             {coldChecks.map((run) => (
@@ -137,15 +133,10 @@ export default function Progress() {
       </div>
 
       <div>
-        <h2 className="label mb-1">Passages that look alike</h2>
-        <p className="mb-3 text-micro text-ink-soft">
-          Where recitation takes the wrong branch. Found across the texts on this device — open
-          more and this list grows.
-        </p>
+        <h2 className="label mb-1">{t('progress.lookAlike')}</h2>
+        <p className="mb-3 text-micro text-ink-soft">{t('progress.lookAlikeBody')}</p>
         {interference.groups.length === 0 ? (
-          <p className="text-small text-ink-soft">
-            Nothing here reads like anything else yet.
-          </p>
+          <p className="text-small text-ink-soft">{t('progress.noLookAlike')}</p>
         ) : (
           <ul className="divide-y divide-rule border-y border-rule">
             {interference.groups.slice(0, 10).map((cluster) => {
@@ -170,15 +161,13 @@ export default function Progress() {
                   >
                     <span className="me-auto min-w-0 text-small">{refs.join('  ·  ')}</span>
                     <span className="shrink-0 text-micro tabular-nums text-ink-soft">
-                      {cluster.score === 1 ? 'identical' : `${Math.round(cluster.score * 100)}%`}
+                      {cluster.score === 1
+                        ? t('progress.identical')
+                        : t('progress.alike', { percent: Math.round(cluster.score * 100) })}
                     </span>
                   </button>
                   {open && (
-                    <SimilarPassages
-                      matches={interference.resolve(key)}
-                      ownDiffering={interference.resolve(key)[0]?.differing}
-                      compact
-                    />
+                    <SimilarPassages matches={interference.resolve(key)} compact />
                   )}
                 </li>
               )
@@ -188,12 +177,10 @@ export default function Progress() {
       </div>
 
       <div>
-        <h2 className="label mb-1">Weak links</h2>
-        <p className="mb-3 text-micro text-ink-soft">
-          The joins most likely to break next. Each one opens straight into practising it.
-        </p>
+        <h2 className="label mb-1">{t('progress.weakJoins')}</h2>
+        <p className="mb-3 text-micro text-ink-soft">{t('progress.weakJoinsBody')}</p>
         {weakLinks.length === 0 ? (
-          <p className="text-small text-ink-soft">No joins in your plan yet.</p>
+          <p className="text-small text-ink-soft">{t('progress.noJoins')}</p>
         ) : (
           <ul className="divide-y divide-rule border-y border-rule">
             {weakLinks.map(({ item, r, title, index }) => (
@@ -212,7 +199,7 @@ export default function Progress() {
                     )}
                   </span>
                   <span className="text-micro tabular-nums text-ink-soft">
-                    {item.lastEvidence ? `${Math.round(r * 100)}%` : 'not checked'}
+                    {item.lastEvidence ? `${Math.round(r * 100)}%` : t('progress.notChecked')}
                   </span>
                 </Link>
               </li>

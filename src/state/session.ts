@@ -8,11 +8,11 @@ import type {
   VerificationMethod,
 } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
-import type { HintAggressiveness, ResponseMode } from './settings'
+import type { ResponseMode } from './settings'
 
-export type SessionKind = 'review' | 'cold'
+export type SessionKind = 'review' | 'cold' | 'practice'
 
-/** Filled = done, outlined = remaining, red-tinted = missed. */
+/** Filled = remembered, outlined = still to come, red = missed. */
 export type MarkStatus = 'pending' | 'passed' | 'missed'
 
 export interface SessionEntry {
@@ -27,13 +27,12 @@ export type Phase = 'learn' | 'prompt' | 'answer' | 'done'
 
 export interface AttemptDraft {
   peeks: number
-  meaningShown: boolean
   startedAt: number
   hintLevel: HintLevel
   errors: { wordIndex: number; kind: ErrorKind }[]
-  /** Set once an objective mode has been checked. */
+  /** Set once the recitation check has run. */
   checked: boolean
-  /** What the recitation check actually heard, kept so the reader can see it. */
+  /** What the recitation check heard, kept so the reader can see it. */
   heard?: string
 }
 
@@ -45,15 +44,12 @@ interface SessionState {
   phase: Phase
   mode: ResponseMode
   draft: AttemptDraft
-  aggressiveness: HintAggressiveness
-  /** Cold check only: what the user got first time, reported plainly at the end. */
+  /** Cold check only: what was recalled first time, reported plainly at the end. */
   passedFirstTime: number
 
-  start: (kind: SessionKind, entries: SessionEntry[], mode: ResponseMode, agg: HintAggressiveness) => void
+  start: (kind: SessionKind, entries: SessionEntry[]) => void
   setMode: (mode: ResponseMode) => void
-  moreHint: () => void
   peek: () => void
-  showMeaning: () => void
   reveal: () => void
   markChecked: (errors: { wordIndex: number; kind: ErrorKind }[], heard?: string) => void
   beginTest: () => void
@@ -61,35 +57,19 @@ interface SessionState {
   reset: () => void
 }
 
-const EMPTY_DRAFT: AttemptDraft = {
-  peeks: 0,
-  meaningShown: false,
-  startedAt: Date.now(),
-  hintLevel: 2,
-  errors: [],
-  checked: false,
-}
-
 /**
- * How much ink is left when a card comes up. Stronger items start with less;
- * the aggressiveness setting shifts the whole ramp.
+ * How much ink is on the page when a card comes up.
+ *
+ * Always hidden. The whole point is to recall the line, and an ayah shown at
+ * any readable level tests reading, not memory. Ghost keeps the word shapes so
+ * there is something to tap when you are stuck; a cold check shows nothing at
+ * all, because that is what a cold check is for.
  */
-export function initialHintLevel(
-  item: ItemRecord,
-  aggressiveness: HintAggressiveness,
-  kind: SessionKind = 'review',
-  mode: ResponseMode = 'self_grade',
-): HintLevel {
-  if (kind === 'cold') return 4
-  // In the objective modes the chips or the slots are the recall, so leaving
-  // ink on the page would just be showing the answer.
-  if (mode !== 'self_grade' && item.type !== 'meaning') return 4
-  const byStreak = Math.min(4, Math.max(1, item.successStreak + 1))
-  const shift = aggressiveness === 'gentle' ? -1 : aggressiveness === 'steep' ? 1 : 0
-  return Math.min(4, Math.max(0, byStreak + shift)) as HintLevel
+export function hiddenLevel(kind: SessionKind): HintLevel {
+  return kind === 'cold' ? 4 : 3
 }
 
-/** Meaning items are always graded by the user; there is nothing to match on. */
+/** Meaning items are always graded by the reader; there is nothing to listen to. */
 export function modeForItem(item: ItemRecord, preferred: ResponseMode): ResponseMode {
   if (item.type === 'meaning') return 'self_grade'
   return preferred
@@ -99,27 +79,26 @@ export function methodForMode(mode: ResponseMode): VerificationMethod {
   return mode
 }
 
-function freshDraft(
-  entry: SessionEntry,
-  agg: HintAggressiveness,
-  kind: SessionKind,
-  mode: ResponseMode,
-): AttemptDraft {
+function freshDraft(kind: SessionKind): AttemptDraft {
   return {
     peeks: 0,
-    meaningShown: false,
     startedAt: Date.now(),
-    hintLevel: initialHintLevel(entry.item, agg, kind, mode),
+    hintLevel: hiddenLevel(kind),
     errors: [],
     checked: false,
   }
 }
 
-/** Never seen before, so there is nothing to test yet — teach it first. */
+/**
+ * Never seen before, so there is nothing to test yet — show it first. Practice
+ * sessions skip this: the reader asked to be tested.
+ */
 function phaseFor(entry: SessionEntry, kind: SessionKind): Phase {
   if (kind === 'cold') return 'prompt'
   return entry.item.introducedAt == null ? 'learn' : 'prompt'
 }
+
+const EMPTY_DRAFT = freshDraft('review')
 
 export const useSession = create<SessionState>()((set, get) => ({
   kind: 'review',
@@ -129,45 +108,23 @@ export const useSession = create<SessionState>()((set, get) => ({
   phase: 'done',
   mode: 'self_grade',
   draft: EMPTY_DRAFT,
-  aggressiveness: 'normal',
   passedFirstTime: 0,
 
-  start: (kind, entries, mode, aggressiveness) =>
+  start: (kind, entries) =>
     set({
       kind,
       entries,
       marks: entries.map(() => 'pending' as MarkStatus),
       index: 0,
       phase: entries.length ? phaseFor(entries[0], kind) : 'done',
-      mode: entries.length ? modeForItem(entries[0].item, mode) : mode,
-      draft: entries.length
-        ? freshDraft(entries[0], aggressiveness, kind, modeForItem(entries[0].item, mode))
-        : EMPTY_DRAFT,
-      aggressiveness,
+      mode: 'self_grade',
+      draft: freshDraft(kind),
       passedFirstTime: 0,
     }),
 
-  setMode: (mode) => {
-    const { entries, index, aggressiveness, kind } = get()
-    const entry = entries[index]
-    set({
-      mode,
-      draft: entry
-        ? { ...get().draft, hintLevel: initialHintLevel(entry.item, aggressiveness, kind, mode) }
-        : get().draft,
-    })
-  },
-
-  // "More hint" puts ink back on the page.
-  moreHint: () =>
-    set((s) => ({
-      draft: { ...s.draft, hintLevel: Math.max(0, s.draft.hintLevel - 1) as HintLevel },
-    })),
+  setMode: (mode) => set({ mode }),
 
   peek: () => set((s) => ({ draft: { ...s.draft, peeks: s.draft.peeks + 1 } })),
-
-  // Using the meaning during a test is recorded exactly like a peek.
-  showMeaning: () => set((s) => ({ draft: { ...s.draft, meaningShown: true } })),
 
   reveal: () => set({ phase: 'answer' }),
 
@@ -177,7 +134,7 @@ export const useSession = create<SessionState>()((set, get) => ({
   beginTest: () => set({ phase: 'prompt' }),
 
   advance: (rating, updated) => {
-    const { entries, index, marks, kind, aggressiveness, mode } = get()
+    const { entries, index, marks, kind } = get()
     const nextMarks = [...marks]
     nextMarks[index] = rating >= 2 ? 'passed' : 'missed'
     const nextEntries = entries.map((e, i) => (i === index ? { ...e, item: updated } : e))
@@ -198,13 +155,8 @@ export const useSession = create<SessionState>()((set, get) => ({
       marks: nextMarks,
       index: nextIndex,
       phase: phaseFor(nextEntries[nextIndex], kind),
-      mode: modeForItem(nextEntries[nextIndex].item, mode),
-      draft: freshDraft(
-        nextEntries[nextIndex],
-        aggressiveness,
-        kind,
-        modeForItem(nextEntries[nextIndex].item, mode),
-      ),
+      mode: modeForItem(nextEntries[nextIndex].item, s.mode),
+      draft: freshDraft(kind),
       passedFirstTime: s.passedFirstTime + firstTime,
     }))
   },

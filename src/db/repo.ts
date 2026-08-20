@@ -172,7 +172,7 @@ function startOfDay(now: number) {
 /** A line is introduced before the join that leaves it. */
 const TYPE_ORDER: Record<ItemRecord['type'], number> = { block: 0, meaning: 1, link: 2 }
 
-function readingOrder(a: ItemRecord, b: ItemRecord): number {
+export function readingOrder(a: ItemRecord, b: ItemRecord): number {
   return (
     a.textId.localeCompare(b.textId) ||
     (parseSegmentIndex(a.segmentId) ?? 0) - (parseSegmentIndex(b.segmentId) ?? 0) ||
