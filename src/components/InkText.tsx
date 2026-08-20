@@ -90,6 +90,8 @@ export interface InkTextProps {
   onPeek?: (wordIndex: number) => void
   /** Word currently being recited, highlighted with --focus. */
   activeWordIndex?: number | null
+  /** Words to draw attention to — what differs from a near-identical passage. */
+  focusWordIndices?: number[]
   className?: string
   /** Words the user got wrong, tinted with --correction. */
   errorWordIndices?: number[]
@@ -106,6 +108,7 @@ export function InkText({
   peekable = false,
   onPeek,
   activeWordIndex = null,
+  focusWordIndices,
   className = '',
   errorWordIndices,
   peekSignal = 0,
@@ -118,6 +121,7 @@ export function InkText({
   const [peeked, setPeeked] = useState<Set<number>>(() => new Set())
   const timers = useRef(new Map<number, number>())
   const errorSet = useMemo(() => new Set(errorWordIndices ?? []), [errorWordIndices])
+  const focusSet = useMemo(() => new Set(focusWordIndices ?? []), [focusWordIndices])
 
   useEffect(() => {
     setPeeked(new Set())
@@ -186,7 +190,7 @@ export function InkText({
             level={peeked.has(token.index) ? 0 : level}
             peekable={peekable && level !== 0}
             onPeek={() => peek(token.index)}
-            active={activeWordIndex === token.index}
+            active={activeWordIndex === token.index || focusSet.has(token.index)}
             errored={errorSet.has(token.index)}
           />
         ),

@@ -16,6 +16,8 @@ import { ITEM_TYPE_LABELS, type ErrorKind, type SegmentRecord, type TextRecord }
 import type { GradeRating } from '@/engine/scheduler'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { Transliteration } from '@/components/Transliteration'
+import { SimilarPassages } from '@/components/SimilarPassages'
+import { useInterference } from '@/lib/useInterference'
 import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
 import { segmentWords, words as splitWords } from '@/lib/text'
 import { useSettings } from '@/state/settings'
@@ -140,6 +142,7 @@ function Room({ kind }: { kind: SessionKind }) {
   const entry = entries[index]
   const [peekSignal, setPeekSignal] = useState(0)
   const [busy, setBusy] = useState(false)
+  const interference = useInterference()
 
   const meaning = useMemo(
     () => (entry ? resolveMeaning(entry.segment, entry.text, settings) : {}),
@@ -301,6 +304,17 @@ function Room({ kind }: { kind: SessionKind }) {
               <Transliteration
                 line={resolveTransliteration(answerSegment, text, settings)}
                 className="mt-4"
+              />
+            )}
+
+            {/*
+              Shown only after the answer, and only here: the moment you have
+              just recalled a line is when knowing its twin is worth something.
+            */}
+            {showAnswer && (
+              <SimilarPassages
+                matches={interference.resolve(answerSegment.id)}
+                ownDiffering={interference.resolve(answerSegment.id)[0]?.differing}
               />
             )}
 

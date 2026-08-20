@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { SimilarPassages } from '@/components/SimilarPassages'
+import { useInterference } from '@/lib/useInterference'
 import { db } from '@/db/db'
 import { parseSegmentIndex } from '@/db/repo'
 import { evidenceTier, TIER_ORDER } from '@/engine/evidence'
@@ -15,6 +18,9 @@ const TONE: Record<EvidenceTier, string> = {
 }
 
 export default function Progress() {
+  const interference = useInterference()
+  const [openCluster, setOpenCluster] = useState<string | null>(null)
+
   const data = useLiveQuery(async () => {
     const now = Date.now()
     const [items, texts, coldChecks] = await Promise.all([
@@ -126,6 +132,57 @@ export default function Progress() {
                 </span>
               </li>
             ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h2 className="label mb-1">Passages that look alike</h2>
+        <p className="mb-3 text-micro text-ink-soft">
+          Where recitation takes the wrong branch. Found across the texts on this device — open
+          more and this list grows.
+        </p>
+        {interference.groups.length === 0 ? (
+          <p className="text-small text-ink-soft">
+            Nothing here reads like anything else yet.
+          </p>
+        ) : (
+          <ul className="divide-y divide-rule border-y border-rule">
+            {interference.groups.slice(0, 10).map((cluster) => {
+              const key = cluster.segmentIds[0]
+              const open = openCluster === key
+              const refs = cluster.segmentIds
+                .map((id) => {
+                  const segment = interference.segments?.get(id)
+                  const text = segment ? interference.texts?.get(segment.textId) : undefined
+                  return segment && text
+                    ? `${text.title} ${segment.ref ?? segment.index + 1}`
+                    : null
+                })
+                .filter(Boolean)
+              return (
+                <li key={key} className="py-3">
+                  <button
+                    type="button"
+                    onClick={() => setOpenCluster(open ? null : key)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-3 text-start"
+                  >
+                    <span className="me-auto min-w-0 text-small">{refs.join('  ·  ')}</span>
+                    <span className="shrink-0 text-micro tabular-nums text-ink-soft">
+                      {cluster.score === 1 ? 'identical' : `${Math.round(cluster.score * 100)}%`}
+                    </span>
+                  </button>
+                  {open && (
+                    <SimilarPassages
+                      matches={interference.resolve(key)}
+                      ownDiffering={interference.resolve(key)[0]?.differing}
+                      compact
+                    />
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
