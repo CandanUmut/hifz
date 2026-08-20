@@ -55,8 +55,16 @@ tokens.
 ## Content
 
 Two packs ship with the app: **Al-Fātiḥa** and **Juz ʿAmma** (surah 78–114) —
-Uthmani text, word-by-word gloss, two Turkish and two English translations, and
-word-level recitation timings.
+Uthmani text, word-by-word gloss, three transliterations, two Turkish and two
+English translations, and word-level recitation timings.
+
+Transliteration is stored separately from translation, because it is the same
+text in another script rather than its meaning. Three editions: **Readable**
+(`Qul huwal laahu ahad`), **Scholarly** (`Qul Huwa Allāhu ʾAĥadun`), and
+**Word-aligned** (`qul huwa l-lahu aḥadun`), which has one token per Arabic
+word and so highlights in step with the recitation. It shows while you are
+learning and once an answer is revealed — never as a hint during a test, since
+it is the line itself.
 
 Packs are static JSON snapshots taken at build time. **The app never calls an
 upstream API at runtime**, so it works offline and no donation-funded server

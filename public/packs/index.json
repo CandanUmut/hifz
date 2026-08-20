@@ -5,7 +5,7 @@
       "id": "quran-al-fatiha",
       "title": "Al-Fātiḥa",
       "subtitle": "The opening — 7 ayah",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "file": "quran-al-fatiha/pack.json",
       "textCount": 1,
       "segmentCount": 7
@@ -14,7 +14,7 @@
       "id": "quran-juz-amma",
       "title": "Juz ʿAmma",
       "subtitle": "Surah 78–114, the last thirtieth",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "file": "quran-juz-amma/pack.json",
       "textCount": 37,
       "segmentCount": 564

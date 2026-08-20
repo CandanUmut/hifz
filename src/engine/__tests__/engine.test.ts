@@ -4,6 +4,7 @@ import { generateItems } from '../items'
 import { evidenceTier } from '../evidence'
 import { isPass, newCard, retrievability, schedule } from '../scheduler'
 import { initialsOf, sameInitial, shuffle } from '@/lib/text'
+import { resolveTransliteration } from '@/lib/translations'
 import type { ItemRecord, SegmentRecord } from '../types'
 
 const segments = (contents: string[]): SegmentRecord[] =>
@@ -234,5 +235,73 @@ describe('typed initials', () => {
   it('shuffles deterministically for a given seed', () => {
     const input = [1, 2, 3, 4, 5, 6]
     expect(shuffle(input, 42)).toEqual(shuffle(input, 42))
+  })
+})
+
+describe('transliteration', () => {
+  const text = {
+    id: 't',
+    title: 'T',
+    source: 'pack' as const,
+    lang: 'ar',
+    dir: 'rtl' as const,
+    segmentCount: 1,
+    createdAt: 0,
+    transliterationEditions: [
+      { id: 'easy', title: 'Readable', hint: '' },
+      { id: 'aligned', title: 'Word-aligned', hint: '' },
+    ],
+  }
+  const segment: SegmentRecord = {
+    id: 't#0',
+    textId: 't',
+    index: 0,
+    content: 'قُلْ هُوَ ٱللَّهُ أَحَدٌ',
+    translations: {},
+    transliterations: { easy: 'Qul huwal laahu ahad', aligned: 'qul huwa l-lahu aḥadun' },
+  }
+
+  it('returns nothing when the reader has it switched off', () => {
+    expect(
+      resolveTransliteration(segment, text, { translitEdition: 'easy', showTransliteration: false }),
+    ).toBeUndefined()
+  })
+
+  it('picks the chosen edition and names it', () => {
+    const out = resolveTransliteration(segment, text, {
+      translitEdition: 'easy',
+      showTransliteration: true,
+    })
+    expect(out).toEqual({ text: 'Qul huwal laahu ahad', title: 'Readable', aligned: false })
+  })
+
+  it('flags the word-aligned edition so it can follow the recitation', () => {
+    const out = resolveTransliteration(segment, text, {
+      translitEdition: 'aligned',
+      showTransliteration: true,
+    })
+    expect(out?.aligned).toBe(true)
+    expect(out?.text.split(' ')).toHaveLength(segment.content.split(' ').length)
+  })
+
+  it('falls back to what the pack has rather than showing nothing', () => {
+    const out = resolveTransliteration(segment, text, {
+      translitEdition: 'not-in-this-pack',
+      showTransliteration: true,
+    })
+    expect(out?.text).toBe('Qul huwal laahu ahad')
+  })
+
+  it('is never treated as a translation, so it cannot generate meaning items', () => {
+    const created = generateItems({
+      textId: 't',
+      allSegments: [segment],
+      selectedIndices: [0],
+      existingIndices: [],
+      existing: [],
+      types: { block: false, link: false, meaning: true },
+      intent: 'learning',
+    })
+    expect(created).toHaveLength(0)
   })
 })

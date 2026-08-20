@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/db'
 import { deleteAll, exportAll } from '@/db/repo'
-import type { EditionInfo } from '@/engine/types'
+import type { EditionInfo, TransliterationInfo } from '@/engine/types'
 import {
   useSettings,
   type HintAggressiveness,
@@ -41,8 +41,11 @@ export default function Settings() {
     const texts = await db.texts.toArray()
     const map = new Map<string, EditionInfo>()
     for (const text of texts) for (const e of text.editions ?? []) map.set(e.id, e)
+    const translits = new Map<string, TransliterationInfo>()
+    for (const text of texts)
+      for (const e of text.transliterationEditions ?? []) translits.set(e.id, e)
     const reciter = texts.find((t) => t.reciter)?.reciter
-    return { editions: [...map.values()], reciter }
+    return { editions: [...map.values()], translits: [...translits.values()], reciter }
   }, [])
 
   const tr = (editions?.editions ?? []).filter((e) => e.lang === 'tr')
@@ -87,6 +90,53 @@ export default function Settings() {
           onChange={(v) => set('enEdition', v)}
           empty="Open a text first and its editions appear here."
         />
+      </Group>
+
+      <Group title="Transliteration">
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={settings.showTransliteration}
+            onChange={(e) => set('showTransliteration', e.target.checked)}
+            className="h-4 w-4 accent-[rgb(var(--focus))]"
+          />
+          <span className="text-small">Show the line in Latin script</span>
+        </label>
+        {settings.showTransliteration && (
+          <div className="mt-2 space-y-2">
+            {(editions?.translits ?? []).length === 0 ? (
+              <p className="text-micro text-ink-soft">
+                Open a text first and its transliterations appear here.
+              </p>
+            ) : (
+              (editions?.translits ?? []).map((option) => (
+                <label
+                  key={option.id}
+                  className={[
+                    'flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border px-3 py-2',
+                    settings.translitEdition === option.id ? 'border-ink' : 'border-rule',
+                  ].join(' ')}
+                >
+                  <input
+                    type="radio"
+                    name="translit"
+                    checked={settings.translitEdition === option.id}
+                    onChange={() => set('translitEdition', option.id)}
+                    className="h-4 w-4 accent-[rgb(var(--focus))]"
+                  />
+                  <span>
+                    <span className="block text-small">{option.title}</span>
+                    <span className="block text-micro text-ink-soft">{option.hint}</span>
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+        <p className="mt-2 text-micro text-ink-soft">
+          It never appears as a hint during a test — it is the line itself, just in
+          another script.
+        </p>
       </Group>
 
       <Group title="Checking">

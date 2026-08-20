@@ -40,10 +40,27 @@ calling them at runtime.
 | The Clear Quran — **default** | Dr. Mustafa Khattab | quran-api CDN | Distributed by the translator for non-commercial use |
 | The Meaning of the Glorious Koran | Marmaduke Pickthall | Tanzil.net via the quran-api CDN | Public domain (1930) |
 
+## Transliterations
+
+The same text in Latin script — not a translation, and stored in its own field
+so it can never be mistaken for one.
+
+| Edition | Style | Source | Terms |
+|---|---|---|---|
+| Readable — **default** | `Qul huwal laahu ahad` — spelled the way it is recited | [quran411](https://quran411.com) via the quran-api CDN | Freely distributed; no restriction stated |
+| Scholarly | `Qul Huwa Allāhu ʾAĥadun` — full diacritics | quran-api CDN | Freely distributed; no restriction stated |
+| Word-aligned | `qul huwa l-lahu aḥadun` — one token per Arabic word | Derived from the Quran.com API v4 word transliterations | Same terms as the word-by-word gloss |
+
+The word-aligned edition is built from the same word list as the gloss, so it
+has exactly one token per Arabic word and follows the recitation word by word
+when audio plays.
+
 ## Word-by-word gloss
 
 English gloss and transliteration per word, from the
-[Quran.com API v4](https://api-docs.quran.foundation).
+[Quran.com API v4](https://api-docs.quran.foundation). Shown under each word
+in the word-by-word view, and the source of the word-aligned transliteration
+above.
 
 ## Recitation audio
 

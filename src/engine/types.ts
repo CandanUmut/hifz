@@ -81,6 +81,21 @@ export interface EditionInfo {
   license?: string
 }
 
+/**
+ * A transliteration is the same text in another script, not a translation, so
+ * it lives in its own field. If it sat in `translations` it would be eligible
+ * to generate `meaning` items, which would ask the reader to recall the
+ * meaning of the line by reading the line.
+ */
+export interface TransliterationInfo {
+  id: string
+  title: string
+  hint: string
+  source?: string
+  sourceUrl?: string
+  license?: string
+}
+
 export interface TextRecord {
   id: string
   title: string
@@ -98,6 +113,7 @@ export interface TextRecord {
   segmentCount: number
   /** Which translation editions this text carries, for the settings picker. */
   editions?: EditionInfo[]
+  transliterationEditions?: TransliterationInfo[]
   attribution?: {
     source: string
     sourceUrl: string
@@ -117,6 +133,8 @@ export interface SegmentRecord {
   content: string
   /** Keyed by edition id; resolved to the user's chosen editions at render. */
   translations: Record<string, string>
+  /** Keyed by transliteration edition id. Never a translation. */
+  transliterations?: Record<string, string>
   words?: Word[]
   audio?: SegmentAudio
 }

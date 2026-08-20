@@ -65,6 +65,10 @@ A text is only fetched when the user opens or plans it.
       { "id": "elmalili-sadelestirilmis", "lang": "tr", "title": "…",
         "translator": "…", "source": "…", "sourceUrl": "…", "license": "…" }
     ],
+    "transliterations": [
+      { "id": "easy", "title": "Readable", "hint": "shown under the radio button",
+        "source": "…", "sourceUrl": "…", "license": "…" }
+    ],
     "wordByWord": { "source": "...", "sourceUrl": "..." },
     "audio":      { "source": "...", "sourceUrl": "...", "reciter": "...", "style": "..." }
   },
@@ -112,6 +116,10 @@ if an edition is replaced, use a new id.
         "elmalili-sadelestirilmis": "Neyi soruşturuyorlar",
         "clear-quran": "What are they asking one another about?"
       },
+      "transliterations": {          // optional; the same text, another script
+        "easy": "'Amma yatasaaa'aloon",
+        "aligned": "ʿamma yatasāalūna"
+      },
       "words": [                // optional word-by-word gloss
         { "ar": "عَمَّ", "translit": "ʿamma", "en": "About what" }
       ],
@@ -135,9 +143,18 @@ if an edition is replaced, use a new id.
    consecutive indices, so a gap invents a join that does not exist.
 3. **`wordTimings` is positional** — entry *n* belongs to `words[n]`, in ms
    from the start of `audioUrl`.
-4. `translations` keys must appear in the manifest's `sources.translations`.
-   Unknown keys are ignored, and a missing translation is simply not offered.
-5. Text is stored exactly as it should be recited. The app never normalises,
+4. `translations` keys must appear in the manifest's `sources.translations`,
+   and `transliterations` keys in `sources.transliterations`. Unknown keys are
+   ignored, and a missing entry is simply not offered.
+5. **A transliteration is not a translation.** Keep it out of `translations`:
+   entries there make a segment eligible for `meaning` items, and a `meaning`
+   item answered with a transliteration would ask the reader to recall the
+   meaning of a line by reading the line. The app also never shows a
+   transliteration as a hint during a test, for the same reason.
+6. An id of `aligned` is a promise: exactly one whitespace-separated token per
+   word in `content`, so the app can highlight it in step with the recitation.
+   If you cannot keep that promise, use a different id.
+7. Text is stored exactly as it should be recited. The app never normalises,
    strips diacritics, or re-wraps it.
 
 ## Regenerating the bundled packs

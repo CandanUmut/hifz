@@ -14,7 +14,8 @@ import {
 } from '@/db/repo'
 import { ITEM_TYPE_LABELS, type ErrorKind, type SegmentRecord, type TextRecord } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
-import { resolveMeaning } from '@/lib/translations'
+import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
+import { Transliteration } from '@/components/Transliteration'
 import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
 import { words as splitWords } from '@/lib/text'
 import { useSettings } from '@/state/settings'
@@ -241,7 +242,16 @@ function Room({ kind }: { kind: SessionKind }) {
         ].join(' ')}
       >
         {phase === 'learn' ? (
-          <LearnPane entry={entry} meaning={meaning} onReady={beginTest} />
+          <LearnPane
+            entry={entry}
+            meaning={meaning}
+            translit={resolveTransliteration(
+              item.type === 'link' ? (nextSegment ?? segment) : segment,
+              text,
+              settings,
+            )}
+            onReady={beginTest}
+          />
         ) : (
           <>
             <Prompt
@@ -280,6 +290,17 @@ function Room({ kind }: { kind: SessionKind }) {
                   onComplete={(errors) => markChecked(errors)}
                 />
               </div>
+            )}
+
+            {/*
+              The transliteration is the line itself in Latin letters, so it is
+              never a hint — it appears only once the answer is out.
+            */}
+            {showAnswer && (
+              <Transliteration
+                line={resolveTransliteration(answerSegment, text, settings)}
+                className="mt-4"
+              />
             )}
 
             {showAnswer && draft.checked && (
@@ -356,10 +377,12 @@ function Room({ kind }: { kind: SessionKind }) {
 function LearnPane({
   entry,
   meaning,
+  translit,
   onReady,
 }: {
   entry: SessionEntry
   meaning: ReturnType<typeof resolveMeaning>
+  translit: ReturnType<typeof resolveTransliteration>
   onReady: () => void
 }) {
   const { segment, nextSegment, item, text } = entry
@@ -374,6 +397,7 @@ function LearnPane({
         lang={text.lang}
         className={passageClass(text)}
       />
+      <Transliteration line={translit} className="mt-3" />
       {meaning.tr && <p className="meaning mt-6">{meaning.tr.text}</p>}
       {meaning.en && <p className="meaning mt-3">{meaning.en.text}</p>}
       {shown.words && shown.words.length > 0 && (
@@ -383,9 +407,16 @@ function LearnPane({
             {shown.words.map((w, i) => (
               <span key={i} className="text-center">
                 <span className={`block ${wordClass(text)}`}>{w.ar}</span>
-                <span className="block text-micro text-ink-soft" dir="ltr">
-                  {w.en ?? w.translit}
-                </span>
+                {w.translit && (
+                  <span className="block text-micro text-ink-soft" dir="ltr">
+                    {w.translit}
+                  </span>
+                )}
+                {w.en && (
+                  <span className="block text-micro text-ink-soft/70" dir="ltr">
+                    {w.en}
+                  </span>
+                )}
               </span>
             ))}
           </div>

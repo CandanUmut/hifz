@@ -16,7 +16,13 @@ import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { HeatStrip } from '@/components/HeatStrip'
 import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import { INTENT_LABELS, type Intent, type SegmentRecord, type TextRecord } from '@/engine/types'
-import { hasMeaning, resolveMeaning } from '@/lib/translations'
+import {
+  hasMeaning,
+  hasTransliteration,
+  resolveMeaning,
+  resolveTransliteration,
+} from '@/lib/translations'
+import { Transliteration } from '@/components/Transliteration'
 import { useAudio } from '@/lib/useAudio'
 import { passageClass, wordClass } from '@/lib/typography'
 import { listPacks } from '@/packs/loader'
@@ -169,6 +175,13 @@ export default function TextDetail() {
             on={settings.showTranslationEn}
             onChange={(v) => setSetting('showTranslationEn', v)}
           />
+          {hasTransliteration(segments) && (
+            <Toggle
+              label="Transliteration"
+              on={settings.showTransliteration}
+              onChange={(v) => setSetting('showTransliteration', v)}
+            />
+          )}
           {audio.available && (
             <span className="text-micro text-ink-soft">Tap ▶ on a line to hear it.</span>
           )}
@@ -209,6 +222,12 @@ export default function TextDetail() {
           {text.editions?.map((edition) => (
             <p key={edition.id} className="mt-1">
               {edition.title} — {edition.translator}
+              {edition.license ? ` · ${edition.license}` : ''}
+            </p>
+          ))}
+          {text.transliterationEditions?.map((edition) => (
+            <p key={edition.id} className="mt-1">
+              Transliteration ({edition.title}) — {edition.source}
               {edition.license ? ` · ${edition.license}` : ''}
             </p>
           ))}
@@ -287,6 +306,7 @@ function Ayah({
 }) {
   const settings = useSettings()
   const meaning = resolveMeaning(segment, text, settings)
+  const translit = resolveTransliteration(segment, text, settings)
   const playing = audio.playingIndex === segment.index
 
   return (
@@ -336,6 +356,12 @@ function Ayah({
         activeWordIndex={playing ? audio.activeWord : null}
       />
 
+      <Transliteration
+        line={translit}
+        activeWordIndex={playing ? audio.activeWord : null}
+        className="mt-2"
+      />
+
       {settings.showTranslationTr && meaning.tr && (
         <p className="meaning mt-3">{meaning.tr.text}</p>
       )}
@@ -348,9 +374,16 @@ function Ayah({
           {segment.words.map((w, i) => (
             <span key={i} className="text-center">
               <span className={`block ${wordClass(text)}`}>{w.ar}</span>
-              <span className="block text-micro text-ink-soft" dir="ltr">
-                {w.en ?? w.translit}
-              </span>
+              {w.translit && (
+                <span className="block text-micro text-ink-soft" dir="ltr">
+                  {w.translit}
+                </span>
+              )}
+              {w.en && (
+                <span className="block text-micro text-ink-soft/70" dir="ltr">
+                  {w.en}
+                </span>
+              )}
             </span>
           ))}
         </div>

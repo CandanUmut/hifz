@@ -1,4 +1,10 @@
-import type { EditionInfo, SegmentRecord, TextRecord, Word } from '@/engine/types'
+import type {
+  EditionInfo,
+  SegmentRecord,
+  TextRecord,
+  TransliterationInfo,
+  Word,
+} from '@/engine/types'
 
 /**
  * Packs are static JSON in public/packs. Nothing here talks to an API — see
@@ -31,6 +37,7 @@ export interface PackManifest {
   sources: {
     arabic: { source: string; edition: string; sourceUrl: string; license: string }
     translations: EditionInfo[]
+    transliterations?: TransliterationInfo[]
     wordByWord: { source: string; sourceUrl: string }
     audio: { source: string; sourceUrl: string; reciter: string; style: string }
   }
@@ -60,6 +67,7 @@ export interface PackTextFile {
     ref: string
     content: string
     translations: Record<string, string>
+    transliterations?: Record<string, string>
     words?: Word[]
     audio?: { from: number; to: number; wordTimings?: [number, number][] }
   }>
@@ -108,6 +116,7 @@ export function toRecords(
     reciter: manifest.sources.audio.reciter,
     segmentCount: file.segments.length,
     editions: manifest.sources.translations,
+    transliterationEditions: manifest.sources.transliterations,
     attribution: manifest.attribution,
     license: manifest.license,
     createdAt: Date.now(),
@@ -119,6 +128,7 @@ export function toRecords(
     ref: s.ref,
     content: s.content,
     translations: s.translations,
+    transliterations: s.transliterations,
     words: s.words,
     audio: s.audio,
   }))

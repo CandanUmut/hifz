@@ -74,6 +74,48 @@ interface EditionDef {
   license: string
 }
 
+/**
+ * Transliteration is not a translation — it is the same text in another
+ * script — so it is kept in its own field. Putting it in `translations` would
+ * make it eligible to generate `meaning` items, which would be nonsense.
+ */
+interface TransliterationDef {
+  id: string
+  title: string
+  hint: string
+  /** Slug on the quran-api CDN, or null for the one derived from the words. */
+  cdnSlug: string | null
+  sourceUrl: string
+  license: string
+}
+
+const TRANSLITERATIONS: TransliterationDef[] = [
+  {
+    id: 'easy',
+    title: 'Readable',
+    hint: 'Spelled the way it is recited — "Qul huwal laahu ahad".',
+    cdnSlug: 'ara-quran-la1',
+    sourceUrl: 'https://quran411.com',
+    license: 'Freely distributed transliteration; no restriction stated.',
+  },
+  {
+    id: 'scholarly',
+    title: 'Scholarly',
+    hint: 'Full diacritics — "Qul Huwa Allāhu ʾAĥadun".',
+    cdnSlug: 'ara-quranphoneticst',
+    sourceUrl: 'https://github.com/fawazahmed0/quran-api',
+    license: 'Freely distributed transliteration; no restriction stated.',
+  },
+  {
+    id: 'aligned',
+    title: 'Word-aligned',
+    hint: 'One token per Arabic word, so it follows the recitation word by word.',
+    cdnSlug: null,
+    sourceUrl: 'https://api-docs.quran.foundation',
+    license: 'Quran.com API v4 word-by-word transliteration.',
+  },
+]
+
 const EDITIONS: EditionDef[] = [
   {
     id: 'elmalili-sadelestirilmis',
@@ -143,6 +185,8 @@ export interface PackSegment {
   ref: string
   content: string
   translations: Record<string, string>
+  /** Keyed by transliteration edition id. Never a translation. */
+  transliterations?: Record<string, string>
   words?: PackWord[]
   audio?: { from: number; to: number; wordTimings?: [number, number][] }
 }
@@ -186,6 +230,14 @@ export interface PackManifest {
         source: string
       }
     >
+    transliterations: Array<{
+      id: string
+      title: string
+      hint: string
+      source: string
+      sourceUrl: string
+      license: string
+    }>
     wordByWord: { source: string; sourceUrl: string }
     audio: { source: string; sourceUrl: string; reciter: string; style: string }
   }
@@ -407,6 +459,13 @@ async function build(packKey: string) {
     editionVerses.set(edition.id, await fetchEditionFromCdn(edition.cdnSlug))
   }
 
+  const translitVerses = new Map<string, VerseMap>()
+  for (const edition of TRANSLITERATIONS) {
+    if (!edition.cdnSlug) continue
+    console.log(`  fetching transliteration: ${edition.title}`)
+    translitVerses.set(edition.id, await fetchEditionFromCdn(edition.cdnSlug))
+  }
+
   const chapters = await fetchChapters()
   const texts: PackManifest['texts'] = []
 
@@ -433,6 +492,17 @@ async function build(packKey: string) {
         if (text) translations[edition.id] = text
       }
 
+      const transliterations: Record<string, string> = {}
+      for (const edition of TRANSLITERATIONS) {
+        if (edition.cdnSlug) {
+          const text = translitVerses.get(edition.id)?.get(ref)
+          if (text) transliterations[edition.id] = text
+        } else if (words.some((w) => w.translit)) {
+          // Derived, so it keeps exactly one token per Arabic word.
+          transliterations[edition.id] = words.map((w) => w.translit ?? '—').join(' ')
+        }
+      }
+
       const timing = timings.get(ref)
       const wordTimings = timing?.segments
         ?.map((seg) => {
@@ -448,6 +518,7 @@ async function build(packKey: string) {
         ref,
         content: verse.text_uthmani.trim(),
         translations,
+        transliterations: Object.keys(transliterations).length ? transliterations : undefined,
         words: words.length ? words : undefined,
         audio: timing
           ? {
@@ -498,7 +569,7 @@ async function build(packKey: string) {
   const manifest: PackManifest = {
     schema: SCHEMA_VERSION,
     id: def.id,
-    version: '1.0.0',
+    version: '1.1.0',
     builtAt: new Date().toISOString().slice(0, 10),
     title: def.title,
     subtitle: def.subtitle,
@@ -534,6 +605,16 @@ async function build(packKey: string) {
           e.id === 'elmalili-sadelestirilmis'
             ? turkish.source
             : 'quran-api CDN (github.com/fawazahmed0/quran-api)',
+      })),
+      transliterations: TRANSLITERATIONS.map((t) => ({
+        id: t.id,
+        title: t.title,
+        hint: t.hint,
+        source: t.cdnSlug
+          ? 'quran-api CDN (github.com/fawazahmed0/quran-api)'
+          : 'Derived from the Quran.com API v4 word transliterations',
+        sourceUrl: t.sourceUrl,
+        license: t.license,
       })),
       wordByWord: {
         source: 'Quran.com API v4 word-by-word gloss',

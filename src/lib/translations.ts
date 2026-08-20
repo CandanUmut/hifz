@@ -1,6 +1,13 @@
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import type { Settings } from '@/state/settings'
 
+export interface ResolvedTransliteration {
+  text: string
+  title: string
+  /** One token per Arabic word, so it can follow the recitation. */
+  aligned: boolean
+}
+
 export interface ResolvedMeaning {
   tr?: { text: string; title: string }
   en?: { text: string; title: string }
@@ -39,6 +46,33 @@ export function resolveMeaning(
     if (id && value) resolved.tr = { text: value, title: titleOf(id) }
   }
   return resolved
+}
+
+/**
+ * The transliteration to print under a line. Falls back to whatever the text
+ * carries so a pack without the preferred edition still shows something.
+ */
+export function resolveTransliteration(
+  segment: SegmentRecord,
+  text: TextRecord | undefined,
+  settings: Pick<Settings, 'translitEdition' | 'showTransliteration'>,
+): ResolvedTransliteration | undefined {
+  if (!settings.showTransliteration) return undefined
+  const available = segment.transliterations
+  if (!available) return undefined
+  const editions = text?.transliterationEditions ?? []
+  const titleOf = (id: string) => editions.find((e) => e.id === id)?.title ?? id
+
+  const id = available[settings.translitEdition]
+    ? settings.translitEdition
+    : Object.keys(available)[0]
+  if (!id) return undefined
+  return { text: available[id], title: titleOf(id), aligned: id === 'aligned' }
+}
+
+/** Any transliteration at all — decides whether the toggle is worth showing. */
+export function hasTransliteration(segments: SegmentRecord[]): boolean {
+  return segments.some((s) => s.transliterations && Object.keys(s.transliterations).length > 0)
 }
 
 /** Any meaning at all — decides whether `meaning` items can be generated. */

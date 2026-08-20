@@ -134,3 +134,22 @@
   font-size: 20px;
   line-height: 1.6;
 }
+
+/*
+ * Transliteration is notation, not prose: the interface face, tracked and
+ * quiet, so it never competes with the line above it or reads like the
+ * translation below it.
+ */
+.translit {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: rgb(var(--ink-soft));
+  max-width: 62ch;
+}
+
+.translit em {
+  font-style: normal;
+  color: rgb(var(--focus));
+}

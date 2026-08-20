@@ -18,6 +18,9 @@ export interface Settings {
   /** Remembered per user on the text detail page. */
   showTranslationTr: boolean
   showTranslationEn: boolean
+  showTransliteration: boolean
+  /** Which transliteration edition, from a pack's `transliterations`. */
+  translitEdition: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hintAggressiveness: 'normal',
   showTranslationTr: true,
   showTranslationEn: false,
+  showTransliteration: true,
+  translitEdition: 'easy',
 }
 
 interface SettingsStore extends Settings {
