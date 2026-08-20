@@ -15,7 +15,7 @@ import { InkText } from '@/components/InkText'
 import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { HeatStrip } from '@/components/HeatStrip'
 import { DEFAULT_ITEM_TYPES } from '@/engine/items'
-import { INTENT_LABELS, type Intent, type SegmentRecord, type TextRecord } from '@/engine/types'
+import type { Intent, SegmentRecord, TextRecord } from '@/engine/types'
 import {
   hasMeaning,
   hasTransliteration,
@@ -30,6 +30,7 @@ import { segmentWords } from '@/lib/text'
 import { passageClass, wordClass } from '@/lib/typography'
 import { listPacks, PackUnavailableError } from '@/packs/loader'
 import { useSettings } from '@/state/settings'
+import { useT } from '@/i18n'
 
 const INTENTS: Intent[] = ['learning', 'maintaining', 'paused']
 
@@ -44,6 +45,7 @@ export default function TextDetail() {
   const [openGloss, setOpenGloss] = useState<number | null>(null)
   const [includeMeaning, setIncludeMeaning] = useState(false)
   const [openTwins, setOpenTwins] = useState<number | null>(null)
+  const t = useT()
   const interference = useInterference()
 
   const packId = params.get('pack')
@@ -80,7 +82,7 @@ export default function TextDetail() {
     return { text, segments, items }
   }, [id])
 
-  const audio = useAudio(data?.text)
+  const audio = useAudio(data?.text, data?.segments)
 
   const plannedIndices = useMemo(() => {
     if (!data) return new Set<number>()
@@ -106,23 +108,21 @@ export default function TextDetail() {
   if (importError) {
     return (
       <div>
-        <p className="text-base">{importError}</p>
-        <p className="mt-2 text-small text-ink-soft">
-          Anything you have already opened stays available offline.
-        </p>
+        <p className="text-base">{t('offline.notDownloaded')}</p>
+        <p className="mt-2 text-small text-ink-soft">{t('offline.keptNote')}</p>
         <Link to="/library" className="btn-secondary mt-6">
-          Back to the library
+          {t('text.backToLibrary')}
         </Link>
       </div>
     )
   }
-  if (data === undefined) return <p className="text-small text-ink-soft">Loading…</p>
+  if (data === undefined) return <p className="text-small text-ink-soft">{t('common.loading')}</p>
   if (data === null) {
     return (
       <div>
-        <p className="text-base">This text is not on this device.</p>
+        <p className="text-base">{t('text.notOnDevice')}</p>
         <Link to="/library" className="btn-secondary mt-4">
-          Back to the library
+          {t('text.backToLibrary')}
         </Link>
       </div>
     )
@@ -167,7 +167,7 @@ export default function TextDetail() {
 
         {items.length > 0 && (
           <div className="mt-5">
-            <p className="label mb-2">What are you doing with this?</p>
+            <p className="label mb-2">{t('text.intent')}</p>
             <div className="flex flex-wrap gap-2">
               {INTENTS.map((option) => (
                 <button
@@ -177,7 +177,7 @@ export default function TextDetail() {
                   aria-pressed={intent === option}
                   className={intent === option ? 'btn-primary' : 'btn-secondary'}
                 >
-                  {INTENT_LABELS[option]}
+                  {t(`intent.${option}`)}
                 </button>
               ))}
             </div>
@@ -186,25 +186,23 @@ export default function TextDetail() {
 
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <Toggle
-            label="Turkish"
+            label={t('text.turkish')}
             on={settings.showTranslationTr}
             onChange={(v) => setSetting('showTranslationTr', v)}
           />
           <Toggle
-            label="English"
+            label={t('text.english')}
             on={settings.showTranslationEn}
             onChange={(v) => setSetting('showTranslationEn', v)}
           />
           {hasTransliteration(segments) && (
             <Toggle
-              label="Transliteration"
+              label={t('text.transliteration')}
               on={settings.showTransliteration}
               onChange={(v) => setSetting('showTransliteration', v)}
             />
           )}
-          {audio.available && (
-            <span className="text-micro text-ink-soft">Tap ▶ on a line to hear it.</span>
-          )}
+
         </div>
         {audio.error && <p className="mt-2 text-micro text-correction">{audio.error}</p>}
       </header>
@@ -269,22 +267,18 @@ export default function TextDetail() {
                 onChange={(e) => setIncludeMeaning(e.target.checked)}
                 className="h-4 w-4 accent-[rgb(var(--focus))]"
               />
-              Also schedule meanings
+              {t('text.alsoSchedule')}
             </label>
           )}
           <div className="flex items-center gap-3">
           <p className="me-auto text-micro text-ink-soft">
             {selection.size > 0
-              ? `${selection.size} selected`
-              : `${plannedIndices.size} of ${segments.length} in plan`}
+              ? t('text.selected', { count: selection.size })
+              : t('text.inPlanCount', { done: plannedIndices.size, total: segments.length })}
           </p>
           {selection.size > 0 ? (
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => add([...selection])}
-            >
-              Add {selection.size} to plan
+            <button type="button" className="btn-primary" onClick={() => add([...selection])}>
+              {t('text.addSelected', { count: selection.size })}
             </button>
           ) : plannedIndices.size < segments.length ? (
             <button
@@ -292,11 +286,16 @@ export default function TextDetail() {
               className="btn-primary"
               onClick={() => add(segments.map((s) => s.index))}
             >
-              Add all to plan
+              {t('text.addAll')}
             </button>
           ) : (
-            <button type="button" className="btn-primary" onClick={() => navigate('/review')}>
-              Start review
+            /* Practice ignores due dates — asking for a surah should never be refused. */
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
+            >
+              {t('text.practise')}
             </button>
           )}
           </div>
@@ -334,6 +333,7 @@ function Ayah({
   audio: ReturnType<typeof useAudio>
 }) {
   const settings = useSettings()
+  const t = useT()
   const meaning = resolveMeaning(segment, text, settings)
   const translit = resolveTransliteration(segment, text, settings)
   const playing = audio.playingIndex === segment.index
@@ -351,26 +351,26 @@ function Ayah({
           />
           {segment.ref ?? segment.index + 1}
         </label>
-        {planned && <span className="text-micro text-verified">in plan</span>}
+        {planned && <span className="text-micro text-verified">✓</span>}
         <span className="ms-auto flex items-center gap-1">
           {segment.audio && audio.available && (
             <button
               type="button"
               className="btn-text"
               onClick={() => audio.playSegment(segment)}
-              aria-label={playing ? 'Stop' : `Play ${segment.ref ?? segment.index + 1}`}
+              aria-label={playing ? t('text.stop') : `${t('text.play')} ${segment.ref ?? segment.index + 1}`}
             >
               {playing ? '■' : '▶'}
             </button>
           )}
           {segment.words && segment.words.length > 0 && (
             <button type="button" className="btn-text" onClick={onGloss} aria-expanded={glossOpen}>
-              Words
+              {t('text.words')}
             </button>
           )}
           {!planned && (
             <button type="button" className="btn-text" onClick={onAdd}>
-              Add to plan
+              {t('text.addOne')}
             </button>
           )}
         </span>
@@ -406,7 +406,7 @@ function Ayah({
           aria-expanded={twinsOpen}
           className="mt-2 text-micro text-ink-soft underline-offset-4 hover:text-ink hover:underline"
         >
-          {twins.some((t) => t.identical) ? 'Also appears at' : 'Reads like'}{' '}
+          {t('review.confusedWith')}{' '}
           {twins
             .slice(0, 3)
             .map((t) => t.segment.ref ?? t.segment.index + 1)
@@ -416,7 +416,7 @@ function Ayah({
       )}
 
       {twinsOpen && (
-        <SimilarPassages matches={twins} ownDiffering={twins[0]?.differing} compact />
+        <SimilarPassages matches={twins} compact />
       )}
 
       {glossOpen && segment.words && (

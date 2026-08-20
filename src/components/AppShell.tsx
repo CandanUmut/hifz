@@ -1,18 +1,20 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { applyTheme, useSettings } from '@/state/settings'
+import { useT } from '@/i18n'
 import { ServiceWorkerNotice } from './ServiceWorkerNotice'
 
 const NAV = [
-  { to: '/', label: 'Today', end: true },
-  { to: '/library', label: 'Library', end: false },
-  { to: '/progress', label: 'Progress', end: false },
-  { to: '/settings', label: 'Settings', end: false },
-]
+  { to: '/', key: 'nav.today', end: true },
+  { to: '/library', key: 'nav.library', end: false },
+  { to: '/progress', key: 'nav.progress', end: false },
+  { to: '/settings', key: 'nav.settings', end: false },
+] as const
 
 export function AppShell() {
   const theme = useSettings((s) => s.theme)
   const { pathname } = useLocation()
+  const t = useT()
 
   useEffect(() => applyTheme(theme), [theme])
 
@@ -35,7 +37,7 @@ export function AppShell() {
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50
           focus:rounded focus:bg-paper-raised focus:px-3 focus:py-2"
       >
-        Skip to content
+        {t('nav.skip')}
       </a>
 
       <header className="border-b border-rule">
@@ -53,7 +55,7 @@ export function AppShell() {
                 ].join(' ')
               }
             >
-              {entry.label}
+              {t(entry.key)}
             </NavLink>
           ))}
         </nav>

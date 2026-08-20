@@ -1,24 +1,30 @@
 import { useEffect } from 'react'
-import { formatInterval, preview, RATING_LABELS, type GradeRating } from '@/engine/scheduler'
-import type { StoredCard } from '@/engine/types'
+import type { GradeRating } from '@/engine/scheduler'
+import { useT } from '@/i18n'
+import type { StringKey } from '@/i18n/strings'
+
+const LABELS: Record<GradeRating, StringKey> = {
+  1: 'review.grade.again',
+  2: 'review.grade.hard',
+  3: 'review.grade.good',
+  4: 'review.grade.easy',
+}
 
 /**
- * Grades map to FSRS ratings 1–4. Easy is disabled and visually inert when the
- * user peeked or made an error: a hinted answer cannot claim to be effortless.
+ * Four plain answers to one plain question. The scheduling intervals used to be
+ * printed under each one; they were noise, and reading "15d" told nobody
+ * whether they had remembered the ayah.
+ *
+ * "Easily" is off after a peek: a line you looked at cannot have been effortless.
  */
 export function GradeButtons({
-  card,
-  desiredRetention,
   capped,
   onGrade,
 }: {
-  card: StoredCard
-  desiredRetention: number
   capped: boolean
   onGrade: (rating: GradeRating) => void
 }) {
-  const now = Date.now()
-  const outcomes = preview(card, desiredRetention, now)
+  const t = useT()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -47,18 +53,16 @@ export function GradeButtons({
             disabled={disabled}
             onClick={() => onGrade(rating)}
             className={[
-              'btn min-h-[52px] flex-col gap-0.5 border',
+              'btn min-h-[52px] border text-small font-medium',
               rating === 1
                 ? 'border-correction/60 text-correction hover:bg-correction/10'
-                : 'border-rule text-ink hover:border-ink-soft',
+                : rating === 3
+                  ? 'border-verified/60 text-ink hover:bg-verified/10'
+                  : 'border-rule text-ink hover:border-ink-soft',
               disabled ? 'cursor-not-allowed opacity-30' : '',
             ].join(' ')}
-            title={disabled ? 'Not available after a peek' : undefined}
           >
-            <span className="text-small font-medium">{RATING_LABELS[rating]}</span>
-            <span className="text-micro text-ink-soft">
-              {formatInterval(now, outcomes[rating].due)}
-            </span>
+            {t(LABELS[rating])}
           </button>
         )
       })}

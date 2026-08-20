@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { useT } from '@/i18n'
 
 /**
  * Updates are offered, never forced: a reader mid-session should not have the
@@ -12,6 +13,7 @@ export function ServiceWorkerNotice() {
     updateServiceWorker,
   } = useRegisterSW()
   const [dismissedOffline, setDismissedOffline] = useState(false)
+  const t = useT()
 
   useEffect(() => {
     if (!offlineReady) return
@@ -22,12 +24,12 @@ export function ServiceWorkerNotice() {
   if (needRefresh) {
     return (
       <Bar>
-        <span className="me-auto">A newer version is ready.</span>
+        <span className="me-auto">{t('sw.updateReady')}</span>
         <button type="button" className="btn-text" onClick={() => updateServiceWorker(true)}>
-          Reload
+          {t('sw.reload')}
         </button>
         <button type="button" className="btn-text" onClick={() => setNeedRefresh(false)}>
-          Later
+          {t('sw.later')}
         </button>
       </Bar>
     )
@@ -36,7 +38,7 @@ export function ServiceWorkerNotice() {
   if (offlineReady && !dismissedOffline) {
     return (
       <Bar>
-        <span className="me-auto">Ready to work offline.</span>
+        <span className="me-auto">{t('sw.offlineReady')}</span>
         <button
           type="button"
           className="btn-text"
@@ -45,7 +47,7 @@ export function ServiceWorkerNotice() {
             setOfflineReady(false)
           }}
         >
-          Dismiss
+          {t('sw.dismiss')}
         </button>
       </Bar>
     )

@@ -4,6 +4,7 @@ import type { Match } from '@/engine/similarity'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import { segmentWords } from '@/lib/text'
 import { passageClassSmall } from '@/lib/typography'
+import { useT } from '@/i18n'
 
 export interface ResolvedMatch extends Match {
   segment: SegmentRecord
@@ -17,14 +18,12 @@ export interface ResolvedMatch extends Match {
  */
 export function SimilarPassages({
   matches,
-  /** Word positions in the line the reader is looking at that differ. */
-  ownDiffering,
   compact = false,
 }: {
   matches: ResolvedMatch[]
-  ownDiffering?: number[]
   compact?: boolean
 }) {
+  const t = useT()
   if (!matches.length) return null
 
   return (
@@ -32,13 +31,11 @@ export function SimilarPassages({
       {/* Nested under a row that already says what this is, the heading is noise. */}
       {!compact && (
         <>
-          <h3 className="label mb-1">
-            {matches.length === 1 ? 'Easily confused with' : 'Easily confused with these'}
-          </h3>
+          <h3 className="label mb-1">{t('review.confusedWith')}</h3>
           <p className="mb-4 text-micro text-ink-soft">
-            {ownDiffering && ownDiffering.length > 0
-              ? 'The words that tell them apart are marked.'
-              : 'These read the same. The order they come in is the only thing separating them.'}
+            {matches.some((m) => m.identical)
+              ? t('review.confusedIdentical')
+              : t('review.confusedDiffer')}
           </p>
         </>
       )}
@@ -54,7 +51,9 @@ export function SimilarPassages({
                 {match.text.title} {match.segment.ref ?? match.segment.index + 1}
               </Link>
               <span className="text-micro text-ink-soft">
-                {match.identical ? 'word for word the same' : `${Math.round(match.score * 100)}% alike`}
+                {match.identical
+                  ? t('progress.identical')
+                  : t('progress.alike', { percent: Math.round(match.score * 100) })}
               </span>
             </div>
             <InkText

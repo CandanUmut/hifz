@@ -1,9 +1,7 @@
 import {
   COLD_GAP_DAYS,
   METHOD_CONFIDENCE,
-  METHOD_LABELS,
   type Confidence,
-  type EvidenceRef,
   type EvidenceTier,
   type ItemRecord,
   type VerificationMethod,
@@ -35,28 +33,26 @@ export function confidenceFor(method: VerificationMethod, gapDays: number): Conf
   return METHOD_CONFIDENCE[method]
 }
 
-/**
- * What the chip says. The app reports what it saw, never what the user knows.
- */
-export function evidenceLabel(last: EvidenceRef | undefined, now = Date.now()): string {
-  if (!last) return 'Not checked yet'
-  const label = last.gapDays >= COLD_GAP_DAYS ? 'Cold-checked' : METHOD_LABELS[last.method]
-  return `${label} · ${relativeDays(last.at, now)}`
-}
+/** Loosely typed so this module stays free of the string table. */
+type Phrase = (key: never, vars?: Record<string, string | number>) => string
 
-export function relativeDays(at: number, now = Date.now()): string {
+/** "12 days ago", in whichever language the reader chose. */
+export function relativeDays(at: number, now = Date.now(), t?: Phrase): string {
+  const say = (t ?? ((key: string, vars?: Record<string, string | number>) =>
+    `${vars?.count ?? ''} ${key}`.trim())) as (
+    key: string,
+    vars?: Record<string, string | number>,
+  ) => string
   const days = Math.floor((now - at) / 86_400_000)
   if (days <= 0) {
     const hours = Math.floor((now - at) / 3_600_000)
-    if (hours <= 0) return 'just now'
-    return `${hours}h ago`
+    return hours <= 0 ? say('when.justNow') : say('when.hours', { count: hours })
   }
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days} days ago`
+  if (days === 1) return say('when.yesterday')
+  if (days < 30) return say('when.days', { count: days })
   const months = Math.round(days / 30.44)
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
-  const years = (days / 365.25).toFixed(1)
-  return `${years} years ago`
+  if (months < 12) return say('when.months', { count: months })
+  return say('when.years', { count: Math.round(days / 365.25) })
 }
 
 /** Order used by the heat strip and the evidence distribution. */

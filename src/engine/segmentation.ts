@@ -10,14 +10,6 @@ export type SegmentationStrategy =
   | 'verse_marker'
   | 'word_count'
 
-export const STRATEGY_LABELS: Record<SegmentationStrategy, string> = {
-  newline: 'One per line',
-  blank_line: 'Blank line between stanzas',
-  sentence: 'One per sentence',
-  verse_marker: 'At verse markers',
-  word_count: 'Fixed word count',
-}
-
 export interface SegmentationOptions {
   wordsPerSegment?: number
 }
