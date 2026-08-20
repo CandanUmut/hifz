@@ -1,0 +1,52 @@
+/*
+ * Two themes, one class set. Every colour is stored as an rgb channel triplet
+ * so Tailwind's `/opacity` modifiers work off the same variables.
+ *
+ * gündüz — light. gece — dark, first class: people revise before fajr.
+ */
+
+:root,
+[data-theme='gunduz'] {
+  --paper: 238 240 234; /* #EEF0EA cool paper, deliberately not cream */
+  --paper-raised: 247 248 244; /* #F7F8F4 */
+  --ink: 20 24 31; /* #14181F blue-black manuscript ink */
+  --ink-soft: 91 102 117; /* #5B6675 */
+  --rule: 214 218 209; /* #D6DAD1 */
+  --verified: 46 107 84; /* #2E6B54 */
+  --correction: 192 57 43; /* #C0392B red pen — errors only */
+  --focus: 31 86 115; /* #1F5673 */
+
+  color-scheme: light;
+}
+
+[data-theme='gece'] {
+  --paper: 16 20 26; /* #10141A */
+  --paper-raised: 23 28 36; /* #171C24 */
+  --ink: 228 231 225; /* #E4E7E1 */
+  --ink-soft: 138 148 163; /* #8A94A3 */
+  --rule: 38 45 56; /* #262D38 */
+  --verified: 95 161 132; /* #5FA184 */
+  --correction: 224 108 94; /* #E06C5E */
+  --focus: 111 168 199; /* #6FA8C7 */
+
+  color-scheme: dark;
+}
+
+/* Ink-fade opacities live as tokens too — the design language, not magic numbers. */
+:root {
+  --ink-level-0: 1;
+  --ink-level-1: 0.45;
+  --ink-head: 0.9; /* first glyph at level 2 */
+  /* The rest of the word at level 2 lands at 0.9 × 0.0667 ≈ 0.06 — faint, but
+     the shape is still there. */
+  --ink-tail-ratio: 0.0667;
+  --ink-ghost: 0.1; /* word-shaped bars at level 3 */
+  --ink-fade-duration: 400ms;
+  --ink-fade-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ink-fade-duration: 0ms;
+  }
+}

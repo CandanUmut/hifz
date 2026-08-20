@@ -1,0 +1,155 @@
+/*
+ * Ink fade. The base copy always carries the full text, so it alone defines
+ * layout: switching levels can never change a word width or a line break.
+ * The head overlay and the ghost bar are out of flow and only fade.
+ */
+
+.ink-word {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+  color: rgb(var(--ink));
+  border-radius: 3px;
+}
+
+.ink-word[data-active] {
+  color: rgb(var(--focus));
+}
+
+.ink-word[data-errored] {
+  color: rgb(var(--correction));
+}
+
+/*
+ * A registered property so the mask's tail alpha can be animated; without
+ * support the level change is instant, which still works.
+ */
+@property --ink-tail-alpha {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+.ink-word__base {
+  --ink-head-px: 0px;
+  --ink-tail-alpha: 1;
+  /*
+   * One copy of the word, masked — opaque up to the end of the first glyph,
+   * nearly transparent after it. Splitting the word into two elements would
+   * break the cursive join and move its width; this cannot.
+   */
+  -webkit-mask-image: linear-gradient(
+    to var(--ink-mask-to, left),
+    rgb(0 0 0 / 1) 0 var(--ink-head-px),
+    rgb(0 0 0 / var(--ink-tail-alpha)) var(--ink-head-px)
+  );
+  mask-image: linear-gradient(
+    to var(--ink-mask-to, left),
+    rgb(0 0 0 / 1) 0 var(--ink-head-px),
+    rgb(0 0 0 / var(--ink-tail-alpha)) var(--ink-head-px)
+  );
+  transition:
+    opacity var(--ink-fade-duration) var(--ink-fade-ease),
+    --ink-tail-alpha var(--ink-fade-duration) var(--ink-fade-ease);
+}
+
+/* The first glyph sits at the inline start, which flips with direction. */
+[dir='ltr'] .ink-word__base {
+  --ink-mask-to: right;
+}
+
+/*
+ * Level 3: what is left when the ink goes — a ruled line the width of the word,
+ * sitting just under the baseline. Deliberately a rule, not a filled block:
+ * a block would read as redaction.
+ */
+.ink-word__ghost {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc((100% - 1em) / 2 + 0.12em);
+  height: 0.07em;
+  min-height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  pointer-events: none;
+  transition: opacity var(--ink-fade-duration) var(--ink-fade-ease);
+}
+
+/* Peek target: generous hit area without disturbing the measured layout. */
+.ink-word[role='button'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ink-word[role='button']:focus-visible {
+  outline: 2px solid rgb(var(--focus));
+  outline-offset: 1px;
+}
+
+/* Scripture block. Arabic diacritics need the room. */
+.sacred {
+  font-family:
+    'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', 'Scheherazade New', serif;
+  font-size: 34px;
+  line-height: 2.2;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
+@media (max-width: 420px) {
+  .sacred {
+    font-size: 28px;
+    line-height: 2.15;
+  }
+}
+
+.sacred-sm {
+  font-size: 26px;
+  line-height: 2.1;
+}
+
+/* Meaning reads like a page from a translation, not an app tooltip. */
+.meaning {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 62ch;
+  color: rgb(var(--ink-soft));
+}
+
+/* Anything that is not scripture: still the largest thing on screen, but in
+   the book face rather than a Qur'an font it has no glyphs for. */
+.passage {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 26px;
+  line-height: 1.6;
+}
+
+@media (max-width: 420px) {
+  .passage {
+    font-size: 22px;
+  }
+}
+
+.passage-sm {
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+/*
+ * Transliteration is notation, not prose: the interface face, tracked and
+ * quiet, so it never competes with the line above it or reads like the
+ * translation below it.
+ */
+.translit {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: rgb(var(--ink-soft));
+  max-width: 62ch;
+}
+
+.translit em {
+  font-style: normal;
+  color: rgb(var(--focus));
+}

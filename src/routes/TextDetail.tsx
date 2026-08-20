@@ -1,0 +1,415 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db/db'
+import {
+  addToPlan,
+  deriveIntent,
+  ensurePackText,
+  getItems,
+  getSegments,
+  setIntentForText,
+  tiersFromItems,
+} from '@/db/repo'
+import { InkText } from '@/components/InkText'
+import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
+import { HeatStrip } from '@/components/HeatStrip'
+import { DEFAULT_ITEM_TYPES } from '@/engine/items'
+import { INTENT_LABELS, type Intent, type SegmentRecord, type TextRecord } from '@/engine/types'
+import {
+  hasMeaning,
+  hasTransliteration,
+  resolveMeaning,
+  resolveTransliteration,
+} from '@/lib/translations'
+import { Transliteration } from '@/components/Transliteration'
+import { useAudio } from '@/lib/useAudio'
+import { passageClass, wordClass } from '@/lib/typography'
+import { listPacks } from '@/packs/loader'
+import { useSettings } from '@/state/settings'
+
+const INTENTS: Intent[] = ['learning', 'maintaining', 'paused']
+
+export default function TextDetail() {
+  const { id = '' } = useParams()
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const settings = useSettings()
+  const setSetting = useSettings((s) => s.set)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [selection, setSelection] = useState<Set<number>>(new Set())
+  const [openGloss, setOpenGloss] = useState<number | null>(null)
+  const [includeMeaning, setIncludeMeaning] = useState(false)
+
+  const packId = params.get('pack')
+  const file = params.get('file')
+
+  // Pack texts are copied into the local database the first time they open.
+  useEffect(() => {
+    if (!packId || !file) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const index = await listPacks()
+        const entry = index.packs.find((p) => p.id === packId)
+        if (!entry) throw new Error(`unknown pack ${packId}`)
+        await ensurePackText(entry, file, id)
+      } catch (err) {
+        if (!cancelled) setImportError(String(err))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [file, id, packId])
+
+  const data = useLiveQuery(async () => {
+    const text = await db.texts.get(id)
+    if (!text) return null
+    const [segments, items] = await Promise.all([getSegments(id), getItems(id)])
+    return { text, segments, items }
+  }, [id])
+
+  const audio = useAudio(data?.text)
+
+  const plannedIndices = useMemo(() => {
+    if (!data) return new Set<number>()
+    const byId = new Map(data.segments.map((s) => [s.id, s.index]))
+    return new Set(
+      data.items.map((i) => byId.get(i.segmentId)).filter((n): n is number => n != null),
+    )
+  }, [data])
+
+  const add = useCallback(
+    async (indices: number[]) => {
+      if (!data || !indices.length) return
+      await addToPlan({
+        textId: data.text.id,
+        indices,
+        types: { ...DEFAULT_ITEM_TYPES, meaning: includeMeaning && hasMeaning(data.segments) },
+      })
+      setSelection(new Set())
+    },
+    [data, includeMeaning],
+  )
+
+  if (importError) {
+    return <p className="text-small text-correction">Could not open this text: {importError}</p>
+  }
+  if (data === undefined) return <p className="text-small text-ink-soft">Loading…</p>
+  if (data === null) {
+    return (
+      <div>
+        <p className="text-base">This text is not on this device.</p>
+        <Link to="/library" className="btn-secondary mt-4">
+          Back to the library
+        </Link>
+      </div>
+    )
+  }
+
+  const { text, segments, items } = data
+  const tiers = tiersFromItems(items)
+  const intent = deriveIntent(items)
+  const lastEvidence = items
+    .filter((i) => i.lastEvidence)
+    .sort((a, b) => (b.lastEvidence?.at ?? 0) - (a.lastEvidence?.at ?? 0))[0]?.lastEvidence
+
+  const toggle = (index: number) =>
+    setSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+
+  return (
+    <section className="pb-24">
+      <header>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-display">{text.title}</h1>
+          {text.titleTr && <span className="text-base text-ink-soft">{text.titleTr}</span>}
+          {text.titleArabic && (
+            <span className="font-ui-arabic text-base text-ink-soft" dir="rtl">
+              {text.titleArabic}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <IntentBadge intent={intent} />
+          <EvidenceChip last={lastEvidence} />
+        </div>
+
+        <div className="mt-4">
+          <HeatStrip count={segments.length} tiers={tiers} max={segments.length} />
+        </div>
+
+        {items.length > 0 && (
+          <div className="mt-5">
+            <p className="label mb-2">What are you doing with this?</p>
+            <div className="flex flex-wrap gap-2">
+              {INTENTS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setIntentForText(text.id, option)}
+                  aria-pressed={intent === option}
+                  className={intent === option ? 'btn-primary' : 'btn-secondary'}
+                >
+                  {INTENT_LABELS[option]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Toggle
+            label="Turkish"
+            on={settings.showTranslationTr}
+            onChange={(v) => setSetting('showTranslationTr', v)}
+          />
+          <Toggle
+            label="English"
+            on={settings.showTranslationEn}
+            onChange={(v) => setSetting('showTranslationEn', v)}
+          />
+          {hasTransliteration(segments) && (
+            <Toggle
+              label="Transliteration"
+              on={settings.showTransliteration}
+              onChange={(v) => setSetting('showTransliteration', v)}
+            />
+          )}
+          {audio.available && (
+            <span className="text-micro text-ink-soft">Tap ▶ on a line to hear it.</span>
+          )}
+        </div>
+        {audio.error && <p className="mt-2 text-micro text-correction">{audio.error}</p>}
+      </header>
+
+      <ol className="mt-8 divide-y divide-rule border-t border-rule">
+        {segments.map((segment) => (
+          <Ayah
+            key={segment.id}
+            segment={segment}
+            text={text}
+            planned={plannedIndices.has(segment.index)}
+            selected={selection.has(segment.index)}
+            onToggle={() => toggle(segment.index)}
+            onAdd={() => add([segment.index])}
+            glossOpen={openGloss === segment.index}
+            onGloss={() => setOpenGloss((v) => (v === segment.index ? null : segment.index))}
+            audio={audio}
+          />
+        ))}
+      </ol>
+
+      {text.attribution && (
+        <footer className="mt-10 border-t border-rule pt-5 text-micro text-ink-soft">
+          <p>
+            {text.attribution.edition} · {text.attribution.source}{' '}
+            <a
+              href={text.attribution.sourceUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2"
+            >
+              {text.attribution.sourceUrl.replace(/^https?:\/\//, '')}
+            </a>
+          </p>
+          {text.editions?.map((edition) => (
+            <p key={edition.id} className="mt-1">
+              {edition.title} — {edition.translator}
+              {edition.license ? ` · ${edition.license}` : ''}
+            </p>
+          ))}
+          {text.transliterationEditions?.map((edition) => (
+            <p key={edition.id} className="mt-1">
+              Transliteration ({edition.title}) — {edition.source}
+              {edition.license ? ` · ${edition.license}` : ''}
+            </p>
+          ))}
+          {text.license && <p className="mt-2">{text.license}</p>}
+        </footer>
+      )}
+
+      {/* One primary action, thumb-reachable. */}
+      <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
+        <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {hasMeaning(segments) && (
+            <label className="mb-2 flex items-center gap-2 text-micro text-ink-soft">
+              <input
+                type="checkbox"
+                checked={includeMeaning}
+                onChange={(e) => setIncludeMeaning(e.target.checked)}
+                className="h-4 w-4 accent-[rgb(var(--focus))]"
+              />
+              Also schedule meanings
+            </label>
+          )}
+          <div className="flex items-center gap-3">
+          <p className="me-auto text-micro text-ink-soft">
+            {selection.size > 0
+              ? `${selection.size} selected`
+              : `${plannedIndices.size} of ${segments.length} in plan`}
+          </p>
+          {selection.size > 0 ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => add([...selection])}
+            >
+              Add {selection.size} to plan
+            </button>
+          ) : plannedIndices.size < segments.length ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => add(segments.map((s) => s.index))}
+            >
+              Add all to plan
+            </button>
+          ) : (
+            <button type="button" className="btn-primary" onClick={() => navigate('/review')}>
+              Start review
+            </button>
+          )}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Ayah({
+  segment,
+  text,
+  planned,
+  selected,
+  onToggle,
+  onAdd,
+  glossOpen,
+  onGloss,
+  audio,
+}: {
+  segment: SegmentRecord
+  text: TextRecord
+  planned: boolean
+  selected: boolean
+  onToggle: () => void
+  onAdd: () => void
+  glossOpen: boolean
+  onGloss: () => void
+  audio: ReturnType<typeof useAudio>
+}) {
+  const settings = useSettings()
+  const meaning = resolveMeaning(segment, text, settings)
+  const translit = resolveTransliteration(segment, text, settings)
+  const playing = audio.playingIndex === segment.index
+
+  return (
+    <li className="py-5">
+      <div className="mb-2 flex items-center gap-2">
+        <label className="flex min-h-[44px] items-center gap-2 text-micro text-ink-soft">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggle}
+            className="h-4 w-4 accent-[rgb(var(--focus))]"
+            aria-label={`Select ${segment.ref ?? segment.index + 1}`}
+          />
+          {segment.ref ?? segment.index + 1}
+        </label>
+        {planned && <span className="text-micro text-verified">in plan</span>}
+        <span className="ms-auto flex items-center gap-1">
+          {segment.audio && audio.available && (
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => audio.playSegment(segment)}
+              aria-label={playing ? 'Stop' : `Play ${segment.ref ?? segment.index + 1}`}
+            >
+              {playing ? '■' : '▶'}
+            </button>
+          )}
+          {segment.words && segment.words.length > 0 && (
+            <button type="button" className="btn-text" onClick={onGloss} aria-expanded={glossOpen}>
+              Words
+            </button>
+          )}
+          {!planned && (
+            <button type="button" className="btn-text" onClick={onAdd}>
+              Add to plan
+            </button>
+          )}
+        </span>
+      </div>
+
+      <InkText
+        text={segment.content}
+        level={0}
+        dir={text.dir}
+        lang={text.lang}
+        className={passageClass(text)}
+        activeWordIndex={playing ? audio.activeWord : null}
+      />
+
+      <Transliteration
+        line={translit}
+        activeWordIndex={playing ? audio.activeWord : null}
+        className="mt-2"
+      />
+
+      {settings.showTranslationTr && meaning.tr && (
+        <p className="meaning mt-3">{meaning.tr.text}</p>
+      )}
+      {settings.showTranslationEn && meaning.en && (
+        <p className="meaning mt-2">{meaning.en.text}</p>
+      )}
+
+      {glossOpen && segment.words && (
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3" dir={text.dir}>
+          {segment.words.map((w, i) => (
+            <span key={i} className="text-center">
+              <span className={`block ${wordClass(text)}`}>{w.ar}</span>
+              {w.translit && (
+                <span className="block text-micro text-ink-soft" dir="ltr">
+                  {w.translit}
+                </span>
+              )}
+              {w.en && (
+                <span className="block text-micro text-ink-soft/70" dir="ltr">
+                  {w.en}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+    </li>
+  )
+}
+
+function Toggle({
+  label,
+  on,
+  onChange,
+}: {
+  label: string
+  on: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <label className="flex min-h-[44px] items-center gap-2 text-small text-ink-soft">
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-[rgb(var(--focus))]"
+      />
+      {label}
+    </label>
+  )
+}

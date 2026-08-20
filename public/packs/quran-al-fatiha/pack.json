@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "id": "quran-al-fatiha",
+  "version": "1.1.0",
+  "builtAt": "2026-08-20",
+  "title": "Al-Fātiḥa",
+  "subtitle": "The opening — 7 ayah",
+  "lang": "ar",
+  "dir": "rtl",
+  "license": "Qur’anic text is not under copyright. Each translation and the recitation carry their own terms, listed per source below and in docs/CONTENT-SOURCES.md.",
+  "attribution": {
+    "source": "Quran.com (Quran Foundation)",
+    "sourceUrl": "https://quran.com",
+    "edition": "KFGQPC Uthmanic Hafs",
+    "translator": "see sources.translations"
+  },
+  "sources": {
+    "arabic": {
+      "source": "Quran.com API v4 (Quran Foundation)",
+      "edition": "Uthmani, King Fahd Glorious Qur’an Printing Complex",
+      "sourceUrl": "https://api-docs.quran.foundation",
+      "license": "Qur’anic text is not under copyright."
+    },
+    "translations": [
+      {
+        "id": "elmalili-sadelestirilmis",
+        "lang": "tr",
+        "title": "Elmalılı Hamdi Yazır (sadeleştirilmiş)",
+        "translator": "Elmalılı Muhammed Hamdi Yazır",
+        "sourceUrl": "https://github.com/fawazahmed0/quran-api",
+        "license": "Public domain (translator d. 1942); compiled edition released without restriction.",
+        "source": "quran-api CDN mirror of the Elmalılı (sadeleştirilmiş) edition"
+      },
+      {
+        "id": "diyanet-isleri",
+        "lang": "tr",
+        "title": "Diyanet İşleri Meali",
+        "translator": "Diyanet İşleri Başkanlığı",
+        "sourceUrl": "https://tanzil.net",
+        "license": "Tanzil.net terms — free for non-commercial use with attribution.",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      },
+      {
+        "id": "clear-quran",
+        "lang": "en",
+        "title": "The Clear Quran",
+        "translator": "Dr. Mustafa Khattab",
+        "sourceUrl": "https://quran.com",
+        "license": "Used with permission of the translator for non-commercial distribution.",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      },
+      {
+        "id": "pickthall",
+        "lang": "en",
+        "title": "The Meaning of the Glorious Koran",
+        "translator": "Marmaduke Pickthall",
+        "sourceUrl": "https://tanzil.net",
+        "license": "Public domain (first published 1930).",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      }
+    ],
+    "transliterations": [
+      {
+        "id": "easy",
+        "title": "Readable",
+        "hint": "Spelled the way it is recited — \"Qul huwal laahu ahad\".",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)",
+        "sourceUrl": "https://quran411.com",
+        "license": "Freely distributed transliteration; no restriction stated."
+      },
+      {
+        "id": "scholarly",
+        "title": "Scholarly",
+        "hint": "Full diacritics — \"Qul Huwa Allāhu ʾAĥadun\".",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)",
+        "sourceUrl": "https://github.com/fawazahmed0/quran-api",
+        "license": "Freely distributed transliteration; no restriction stated."
+      },
+      {
+        "id": "aligned",
+        "title": "Word-aligned",
+        "hint": "One token per Arabic word, so it follows the recitation word by word.",
+        "source": "Derived from the Quran.com API v4 word transliterations",
+        "sourceUrl": "https://api-docs.quran.foundation",
+        "license": "Quran.com API v4 word-by-word transliteration."
+      }
+    ],
+    "wordByWord": {
+      "source": "Quran.com API v4 word-by-word gloss",
+      "sourceUrl": "https://api-docs.quran.foundation"
+    },
+    "audio": {
+      "source": "QuranicAudio, timings from the Quran.com API",
+      "sourceUrl": "https://quranicaudio.com",
+      "reciter": "Mishari Rashid al-Afasy",
+      "style": "Murattal"
+    }
+  },
+  "texts": [
+    {
+      "id": "quran-al-fatiha:1",
+      "index": 1,
+      "title": "Al-Fatihah",
+      "titleArabic": "الفاتحة",
+      "titleTr": "Fâtiha",
+      "segmentCount": 7,
+      "file": "001.json"
+    }
+  ]
+}
