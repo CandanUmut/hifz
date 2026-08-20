@@ -4,6 +4,7 @@ import { InkText, type HintLevel } from '@/components/InkText'
 import { GradeButtons } from '@/components/GradeButtons'
 import { OrderTap } from '@/components/OrderTap'
 import { InitialsDiff, TypeInitials } from '@/components/TypeInitials'
+import { Recite } from '@/components/Recite'
 import { PeekDots, SessionMarks } from '@/components/SessionMarks'
 import { db, newId } from '@/db/db'
 import {
@@ -16,8 +17,10 @@ import { ITEM_TYPE_LABELS, type ErrorKind, type SegmentRecord, type TextRecord }
 import type { GradeRating } from '@/engine/scheduler'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { Transliteration } from '@/components/Transliteration'
+import { SimilarPassages } from '@/components/SimilarPassages'
+import { useInterference } from '@/lib/useInterference'
 import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
-import { words as splitWords } from '@/lib/text'
+import { segmentWords, words as splitWords } from '@/lib/text'
 import { useSettings } from '@/state/settings'
 import { useSession, type SessionEntry, type SessionKind } from '@/state/session'
 
@@ -140,6 +143,7 @@ function Room({ kind }: { kind: SessionKind }) {
   const entry = entries[index]
   const [peekSignal, setPeekSignal] = useState(0)
   const [busy, setBusy] = useState(false)
+  const interference = useInterference()
 
   const meaning = useMemo(
     () => (entry ? resolveMeaning(entry.segment, entry.text, settings) : {}),
@@ -166,6 +170,7 @@ function Room({ kind }: { kind: SessionKind }) {
           durationMs: Date.now() - draft.startedAt,
           hintLevel: draft.hintLevel,
           errors: draft.errors,
+          heard: draft.heard,
           cold: kind === 'cold',
           desiredRetention: settings.desiredRetention,
         })
@@ -271,6 +276,7 @@ function Room({ kind }: { kind: SessionKind }) {
               <div className="mt-8">
                 <OrderTap
                   content={answerSegment.content}
+                  words={segmentWords(answerSegment)}
                   dir={text.dir}
                   lang={text.lang}
                   passageClassName={passageClassSmall(text)}
@@ -280,10 +286,28 @@ function Room({ kind }: { kind: SessionKind }) {
               </div>
             )}
 
+            {!showAnswer && mode === 'recite_asr' && item.type !== 'meaning' && (
+              <div className="mt-8">
+                <Recite
+                  expectedWords={segmentWords(answerSegment)}
+                  dir={text.dir}
+                  lang={text.lang}
+                  passageClassName={passageClassSmall(text)}
+                  onChecked={(check) =>
+                    markChecked(
+                      check.missing.map((wordIndex) => ({ wordIndex, kind: 'missing' })),
+                      check.heard,
+                    )
+                  }
+                />
+              </div>
+            )}
+
             {!showAnswer && mode === 'type_initials' && item.type !== 'meaning' && (
               <div className="mt-8">
                 <TypeInitials
-                  content={answerSegment.content}
+                  words={segmentWords(answerSegment)}
+                  translits={answerSegment.words?.map((w) => w.translit)}
                   dir={text.dir}
                   lang={text.lang}
                   wordClassName={wordClass(text)}
@@ -303,10 +327,22 @@ function Room({ kind }: { kind: SessionKind }) {
               />
             )}
 
+            {/*
+              Shown only after the answer, and only here: the moment you have
+              just recalled a line is when knowing its twin is worth something.
+            */}
+            {showAnswer && (
+              <SimilarPassages
+                matches={interference.resolve(answerSegment.id)}
+                ownDiffering={interference.resolve(answerSegment.id)[0]?.differing}
+              />
+            )}
+
             {showAnswer && draft.checked && (
               <CheckResult
-                content={answerSegment.content}
+                words={segmentWords(answerSegment)}
                 errors={draft.errors}
+                heard={draft.heard}
                 dir={text.dir}
                 lang={text.lang}
                 passageClassName={passageClassSmall(text)}
@@ -361,7 +397,12 @@ function Room({ kind }: { kind: SessionKind }) {
                   >
                     Meaning
                   </button>
-                  <ModeSwitch mode={mode} disabled={item.type === 'meaning'} onChange={setMode} />
+                  <ModeSwitch
+                    mode={mode}
+                    disabled={item.type === 'meaning'}
+                    reciteEnabled={settings.reciteEnabled}
+                    onChange={setMode}
+                  />
                 </div>
               </div>
             )}
@@ -392,6 +433,7 @@ function LearnPane({
       <p className="label mb-4">Learn — nothing is graded here</p>
       <InkText
         text={shown.content}
+        words={segmentWords(shown)}
         level={0}
         dir={text.dir}
         lang={text.lang}
@@ -466,6 +508,7 @@ function Prompt({
         {!suppressAnswerBlock && (
           <InkText
             text={nextSegment?.content ?? ''}
+            words={nextSegment ? segmentWords(nextSegment) : undefined}
             level={level}
             dir={text.dir}
             lang={text.lang}
@@ -486,6 +529,7 @@ function Prompt({
       <div>
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={0}
           dir={text.dir}
           lang={text.lang}
@@ -506,6 +550,7 @@ function Prompt({
         <p className="label mb-3">Which line is this?</p>
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={level}
           dir={text.dir}
           lang={text.lang}
@@ -523,6 +568,7 @@ function Prompt({
       {!suppressAnswerBlock && (
         <InkText
           text={segment.content}
+          words={segmentWords(segment)}
           level={level}
           dir={text.dir}
           lang={text.lang}
@@ -538,14 +584,16 @@ function Prompt({
 }
 
 function CheckResult({
-  content,
+  words: wordList,
   errors,
+  heard,
   dir,
   lang,
   passageClassName,
 }: {
-  content: string
+  words: string[]
   errors: { wordIndex: number; kind: ErrorKind }[]
+  heard?: string
   dir: 'rtl' | 'ltr'
   lang: string
   passageClassName: string
@@ -558,12 +606,18 @@ function CheckResult({
           : `${errors.length} off — marked below.`}
       </p>
       <InitialsDiff
-        content={content}
+        words={wordList}
         errors={errors}
         dir={dir}
         lang={lang}
         className={passageClassName}
       />
+      {/* What the app actually heard, because that is what it is claiming. */}
+      {heard !== undefined && (
+        <p className="mt-3 text-micro text-ink-soft" dir={dir} lang={lang}>
+          Heard: {heard || '(nothing)'}
+        </p>
+      )}
     </div>
   )
 }
@@ -571,11 +625,13 @@ function CheckResult({
 function ModeSwitch({
   mode,
   disabled,
+  reciteEnabled,
   onChange,
 }: {
   mode: string
   disabled: boolean
-  onChange: (mode: 'self_grade' | 'order_tap' | 'type_initials') => void
+  reciteEnabled: boolean
+  onChange: (mode: 'self_grade' | 'order_tap' | 'type_initials' | 'recite_asr') => void
 }) {
   return (
     <label className="flex items-center gap-2 text-micro text-ink-soft">
@@ -590,6 +646,7 @@ function ModeSwitch({
         <option value="self_grade">Self-check</option>
         <option value="order_tap">Tap in order</option>
         <option value="type_initials">Type initials</option>
+        {reciteEnabled && <option value="recite_asr">Recite out loud</option>}
       </select>
     </label>
   )

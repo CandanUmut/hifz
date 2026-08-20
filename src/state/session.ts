@@ -33,6 +33,8 @@ export interface AttemptDraft {
   errors: { wordIndex: number; kind: ErrorKind }[]
   /** Set once an objective mode has been checked. */
   checked: boolean
+  /** What the recitation check actually heard, kept so the reader can see it. */
+  heard?: string
 }
 
 interface SessionState {
@@ -53,7 +55,7 @@ interface SessionState {
   peek: () => void
   showMeaning: () => void
   reveal: () => void
-  markChecked: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
+  markChecked: (errors: { wordIndex: number; kind: ErrorKind }[], heard?: string) => void
   beginTest: () => void
   advance: (rating: GradeRating, updated: ItemRecord) => void
   reset: () => void
@@ -169,8 +171,8 @@ export const useSession = create<SessionState>()((set, get) => ({
 
   reveal: () => set({ phase: 'answer' }),
 
-  markChecked: (errors) =>
-    set((s) => ({ draft: { ...s.draft, errors, checked: true }, phase: 'answer' })),
+  markChecked: (errors, heard) =>
+    set((s) => ({ draft: { ...s.draft, errors, heard, checked: true }, phase: 'answer' })),
 
   beginTest: () => set({ phase: 'prompt' }),
 

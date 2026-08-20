@@ -3,7 +3,14 @@ import { guessDirection, mergeAt, segmentText, splitAt } from '../segmentation'
 import { generateItems } from '../items'
 import { evidenceTier } from '../evidence'
 import { isPass, newCard, retrievability, schedule } from '../scheduler'
-import { initialsOf, sameInitial, shuffle } from '@/lib/text'
+import {
+  acceptedInitials,
+  initialsOf,
+  sameInitial,
+  segmentWords,
+  shuffle,
+  words as splitWords,
+} from '@/lib/text'
 import { resolveTransliteration } from '@/lib/translations'
 import type { ItemRecord, SegmentRecord } from '../types'
 
@@ -227,9 +234,59 @@ describe('scheduling and evidence', () => {
 })
 
 describe('typed initials', () => {
+  const accepts = (word: string, translit: string | undefined, typed: string) =>
+    sameInitial(typed, acceptedInitials(word, translit))
+
   it('ignores diacritics and alef variants', () => {
-    expect(initialsOf('ٱلْحَمْدُ لِلَّهِ')).toEqual(['ا', 'ل'])
-    expect(sameInitial('أ', 'ا')).toBe(true)
+    expect(accepts('ٱلْحَمْدُ', undefined, 'أ')).toBe(true)
+    expect(accepts('لِلَّهِ', undefined, 'ل')).toBe(true)
+  })
+
+  it('takes the Latin initial too, so no Arabic keyboard is needed', () => {
+    expect(accepts('قُلْ', 'qul', 'q')).toBe(true)
+    expect(accepts('هُوَ', 'huwa', 'h')).toBe(true)
+    expect(accepts('أَحَدٌ', 'aḥadun', 'a')).toBe(true)
+    // Capitals and the scholarly diacritics people will not type.
+    expect(accepts('صَفًّۭا', 'ṣaffan', 'S')).toBe(true)
+    expect(accepts('عَمَّ', 'ʿamma', 'a')).toBe(true)
+  })
+
+  it('accepts either reading of a word carrying the definite article', () => {
+    // The same word is transliterated both ways inside one surah.
+    expect(accepts('ٱللَّهُ', 'l-lahu', 'l')).toBe(true)
+    expect(accepts('ٱللَّهُ', 'l-lahu', 'a')).toBe(true)
+    // And the letter someone actually thinks of: "s" for aṣ-Ṣamad.
+    expect(accepts('ٱلصَّمَدُ', 'l-ṣamadu', 's')).toBe(true)
+    expect(accepts('ٱلصَّمَدُ', 'l-ṣamadu', 'ص')).toBe(true)
+    expect(accepts('ٱلصَّمَدُ', 'l-ṣamadu', 'ا')).toBe(true)
+  })
+
+  it('still refuses a letter that is nowhere in the word', () => {
+    expect(accepts('قُلْ', 'qul', 'z')).toBe(false)
+    expect(accepts('قُلْ', 'qul', 'م')).toBe(false)
+    expect(accepts('قُلْ', 'qul', '')).toBe(false)
+  })
+
+  it('falls back to a letter-by-letter Latin guess with no transliteration', () => {
+    expect(accepts('مَنْ', undefined, 'm')).toBe(true)
+    expect(accepts('يَوْمَ', undefined, 'y')).toBe(true)
+    expect(accepts('كَلَّا', undefined, 'k')).toBe(true)
+  })
+
+  it('keeps a waqf mark with its word instead of demanding a slot for it', () => {
+    // ۖ is written after the word with a space, but belongs to it. Splitting on
+    // whitespace asked for a letter nobody could type.
+    const segment = {
+      content: 'صَفًّۭا ۖ لَّا يَتَكَلَّمُونَ',
+      words: [{ ar: 'صَفًّۭا ۖ' }, { ar: 'لَّا' }, { ar: 'يَتَكَلَّمُونَ' }],
+    }
+    expect(splitWords(segment.content)).toHaveLength(4)
+    expect(segmentWords(segment)).toHaveLength(3)
+    expect(initialsOf(segmentWords(segment))).toHaveLength(3)
+  })
+
+  it('falls back to whitespace for a text with no word list', () => {
+    expect(segmentWords({ content: 'one two three' })).toEqual(['one', 'two', 'three'])
   })
 
   it('shuffles deterministically for a given seed', () => {

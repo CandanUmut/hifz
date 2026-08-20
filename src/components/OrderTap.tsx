@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ErrorKind } from '@/engine/types'
-import { hashString, shuffle, words as splitWords } from '@/lib/text'
+import { hashString, shuffle } from '@/lib/text'
 
 /**
  * Words of the segment as chips, tapped back into order. Wrong taps flash in
@@ -8,6 +8,7 @@ import { hashString, shuffle, words as splitWords } from '@/lib/text'
  */
 export function OrderTap({
   content,
+  words: expectedWords,
   dir = 'rtl',
   lang,
   passageClassName = 'sacred sacred-sm',
@@ -15,13 +16,15 @@ export function OrderTap({
   onComplete,
 }: {
   content: string
+  /** The segment's word list — the authoritative tokenisation. */
+  words: string[]
   dir?: 'rtl' | 'ltr'
   lang?: string
   passageClassName?: string
   wordClassName?: string
   onComplete: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
 }) {
-  const expected = useMemo(() => splitWords(content), [content])
+  const expected = expectedWords
   const pool = useMemo(
     () => shuffle(expected.map((w, i) => ({ w, i })), hashString(content)),
     [content, expected],

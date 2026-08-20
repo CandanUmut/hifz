@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useInstallPrompt } from '@/lib/useInstallPrompt'
+import { ASR_MODEL_MB } from '@/lib/asr'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/db'
 import { deleteAll, exportAll } from '@/db/repo'
@@ -22,9 +24,15 @@ const MODES: { id: ResponseMode; label: string; hint: string }[] = [
   {
     id: 'type_initials',
     label: 'Type initials',
-    hint: 'Fast to type, hard to fake. Recorded as typed from memory.',
+    hint: 'One letter per word, Arabic or Latin. Recorded as typed from memory.',
   },
 ]
+
+const RECITE_MODE: { id: ResponseMode; label: string; hint: string } = {
+  id: 'recite_asr',
+  label: 'Recite out loud',
+  hint: 'Listens on this device. Recorded as recited.',
+}
 
 const HINTS: { id: HintAggressiveness; label: string; hint: string }[] = [
   { id: 'gentle', label: 'Gentle', hint: 'more ink for longer' },
@@ -36,6 +44,7 @@ export default function Settings() {
   const settings = useSettings()
   const set = useSettings((s) => s.set)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const install = useInstallPrompt()
 
   const editions = useLiveQuery(async () => {
     const texts = await db.texts.toArray()
@@ -141,7 +150,7 @@ export default function Settings() {
 
       <Group title="Checking">
         <Choice
-          options={MODES}
+          options={settings.reciteEnabled ? [...MODES, RECITE_MODE] : MODES}
           value={settings.defaultResponseMode}
           onChange={(v) => set('defaultResponseMode', v)}
           name="mode"
@@ -193,12 +202,70 @@ export default function Settings() {
         </label>
       </Group>
 
-      <Group title="Recitation">
+      <Group title="Recitation check">
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={settings.reciteEnabled}
+            onChange={(e) => {
+              set('reciteEnabled', e.target.checked)
+              if (!e.target.checked && settings.defaultResponseMode === 'recite_asr') {
+                set('defaultResponseMode', 'self_grade')
+              }
+            }}
+            className="h-4 w-4 accent-[rgb(var(--focus))]"
+          />
+          <span>
+            <span className="block text-small">Let me recite out loud (experimental)</span>
+            <span className="block text-micro text-ink-soft">
+              Adds a fourth way to answer, alongside the three above.
+            </span>
+          </span>
+        </label>
+        <p className="mt-2 text-micro text-ink-soft">
+          Speech recognition runs here, in this browser — your voice is never uploaded, and the
+          recording is dropped as soon as it has been read. It does need a Qur&apos;an-tuned model
+          of about {ASR_MODEL_MB} MB, downloaded once when you first use it. That is the only thing
+          this app ever fetches from a third party, which is why it is off until you ask for it.
+          What it hears is a suggestion; you still give the grade.
+        </p>
+      </Group>
+
+      <Group title="Recitation audio">
         <p className="text-small">{editions?.reciter ?? 'None bundled yet'}</p>
         <p className="mt-1 text-micro text-ink-soft">
           Word timings are recorded per reciter, so switching reciter means rebuilding the pack:
           <code className="ms-1">npm run build:packs -- --reciter=6</code>. Audio streams from
           QuranicAudio and is never stored here.
+        </p>
+      </Group>
+
+      <Group title="On this device">
+        {install.installed ? (
+          <p className="text-small text-ink-soft">Installed. It opens like any other app.</p>
+        ) : install.canInstall ? (
+          <>
+            <p className="text-small text-ink-soft">
+              Install it and it opens from your home screen, full screen, and works with no
+              connection.
+            </p>
+            <button type="button" className="btn-secondary mt-3" onClick={() => install.install()}>
+              Install hifz
+            </button>
+          </>
+        ) : install.needsManualSteps ? (
+          <p className="text-small text-ink-soft">
+            To install: tap Share, then <strong className="font-medium">Add to Home Screen</strong>.
+          </p>
+        ) : (
+          <p className="text-small text-ink-soft">
+            Your browser installs this from its own menu — look for Install or Add to Home Screen.
+          </p>
+        )}
+        <p className="mt-3 text-micro text-ink-soft">
+          The app itself, the fonts and the pack list are stored for offline use; a surah is kept
+          the first time you open it. Recitation audio streams from an external server, so that is
+          the one thing that needs a connection.
         </p>
       </Group>
 

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { applyTheme, useSettings } from '@/state/settings'
+import { ServiceWorkerNotice } from './ServiceWorkerNotice'
 
 const NAV = [
   { to: '/', label: 'Today', end: true },
@@ -61,6 +62,9 @@ export function AppShell() {
       <main id="main" className="mx-auto max-w-column px-5 pb-24 pt-6">
         <Outlet />
       </main>
+
+      {/* Deliberately not rendered in the review room — that screen stays quiet. */}
+      <ServiceWorkerNotice />
     </div>
   )
 }

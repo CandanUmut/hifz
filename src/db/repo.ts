@@ -237,6 +237,7 @@ export interface RecordAttemptInput {
   durationMs: number
   hintLevel?: number
   errors?: { wordIndex: number; kind: ErrorKind }[]
+  heard?: string
   cold?: boolean
   desiredRetention: number
   now?: number
@@ -268,6 +269,7 @@ export async function recordAttempt(input: RecordAttemptInput): Promise<ItemReco
     durationMs: input.durationMs,
     hintLevel: input.hintLevel,
     errors: input.errors?.length ? input.errors : undefined,
+    heard: input.heard,
     cold: input.cold,
   }
 

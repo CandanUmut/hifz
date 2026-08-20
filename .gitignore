@@ -4,3 +4,6 @@ dist
 *.local
 .vite
 /screenshots
+
+# TypeScript incremental build state
+*.tsbuildinfo

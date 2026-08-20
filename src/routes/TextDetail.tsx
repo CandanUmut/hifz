@@ -23,9 +23,12 @@ import {
   resolveTransliteration,
 } from '@/lib/translations'
 import { Transliteration } from '@/components/Transliteration'
+import { SimilarPassages, type ResolvedMatch } from '@/components/SimilarPassages'
+import { useInterference } from '@/lib/useInterference'
 import { useAudio } from '@/lib/useAudio'
+import { segmentWords } from '@/lib/text'
 import { passageClass, wordClass } from '@/lib/typography'
-import { listPacks } from '@/packs/loader'
+import { listPacks, PackUnavailableError } from '@/packs/loader'
 import { useSettings } from '@/state/settings'
 
 const INTENTS: Intent[] = ['learning', 'maintaining', 'paused']
@@ -40,6 +43,8 @@ export default function TextDetail() {
   const [selection, setSelection] = useState<Set<number>>(new Set())
   const [openGloss, setOpenGloss] = useState<number | null>(null)
   const [includeMeaning, setIncludeMeaning] = useState(false)
+  const [openTwins, setOpenTwins] = useState<number | null>(null)
+  const interference = useInterference()
 
   const packId = params.get('pack')
   const file = params.get('file')
@@ -55,7 +60,12 @@ export default function TextDetail() {
         if (!entry) throw new Error(`unknown pack ${packId}`)
         await ensurePackText(entry, file, id)
       } catch (err) {
-        if (!cancelled) setImportError(String(err))
+        if (cancelled) return
+        setImportError(
+          err instanceof PackUnavailableError
+            ? err.message
+            : 'This one has not been downloaded yet, and it could not be fetched just now.',
+        )
       }
     })()
     return () => {
@@ -94,7 +104,17 @@ export default function TextDetail() {
   )
 
   if (importError) {
-    return <p className="text-small text-correction">Could not open this text: {importError}</p>
+    return (
+      <div>
+        <p className="text-base">{importError}</p>
+        <p className="mt-2 text-small text-ink-soft">
+          Anything you have already opened stays available offline.
+        </p>
+        <Link to="/library" className="btn-secondary mt-6">
+          Back to the library
+        </Link>
+      </div>
+    )
   }
   if (data === undefined) return <p className="text-small text-ink-soft">Loading…</p>
   if (data === null) {
@@ -201,6 +221,9 @@ export default function TextDetail() {
             onAdd={() => add([segment.index])}
             glossOpen={openGloss === segment.index}
             onGloss={() => setOpenGloss((v) => (v === segment.index ? null : segment.index))}
+            twins={interference.resolve(segment.id)}
+            twinsOpen={openTwins === segment.index}
+            onTwins={() => setOpenTwins((v) => (v === segment.index ? null : segment.index))}
             audio={audio}
           />
         ))}
@@ -292,6 +315,9 @@ function Ayah({
   onAdd,
   glossOpen,
   onGloss,
+  twins,
+  twinsOpen,
+  onTwins,
   audio,
 }: {
   segment: SegmentRecord
@@ -302,6 +328,9 @@ function Ayah({
   onAdd: () => void
   glossOpen: boolean
   onGloss: () => void
+  twins: ResolvedMatch[]
+  twinsOpen: boolean
+  onTwins: () => void
   audio: ReturnType<typeof useAudio>
 }) {
   const settings = useSettings()
@@ -349,6 +378,7 @@ function Ayah({
 
       <InkText
         text={segment.content}
+        words={segmentWords(segment)}
         level={0}
         dir={text.dir}
         lang={text.lang}
@@ -367,6 +397,26 @@ function Ayah({
       )}
       {settings.showTranslationEn && meaning.en && (
         <p className="meaning mt-2">{meaning.en.text}</p>
+      )}
+
+      {twins.length > 0 && (
+        <button
+          type="button"
+          onClick={onTwins}
+          aria-expanded={twinsOpen}
+          className="mt-2 text-micro text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          {twins.some((t) => t.identical) ? 'Also appears at' : 'Reads like'}{' '}
+          {twins
+            .slice(0, 3)
+            .map((t) => t.segment.ref ?? t.segment.index + 1)
+            .join(', ')}
+          {twins.length > 3 && ` +${twins.length - 3}`}
+        </button>
+      )}
+
+      {twinsOpen && (
+        <SimilarPassages matches={twins} ownDiffering={twins[0]?.differing} compact />
       )}
 
       {glossOpen && segment.words && (

@@ -67,8 +67,12 @@ export interface SegmentAudio {
   /** ms offset into the text's audio file. */
   from: number
   to: number
-  /** Positional: entry n covers words[n]. */
-  wordTimings?: [number, number][]
+  /**
+   * [wordIndex, from, to] in ms. Not positional — a reciter who repeats part of
+   * an ayah produces several spans for the same word, so each span carries the
+   * word it belongs to.
+   */
+  wordTimings?: [number, number, number][]
 }
 
 export interface EditionInfo {
@@ -201,6 +205,8 @@ export interface AttemptRecord {
   /** Hint level the user was on when they answered. */
   hintLevel?: number
   errors?: { wordIndex: number; kind: ErrorKind }[]
+  /** Transcript from a recitation check. Stays on the device like everything else. */
+  heard?: string
   cold?: boolean
 }
 
