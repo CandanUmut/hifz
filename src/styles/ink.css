@@ -20,17 +20,42 @@
   color: rgb(var(--correction));
 }
 
-.ink-word__base,
-.ink-word__head {
-  transition: opacity var(--ink-fade-duration) var(--ink-fade-ease);
+/*
+ * A registered property so the mask's tail alpha can be animated; without
+ * support the level change is instant, which still works.
+ */
+@property --ink-tail-alpha {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
 }
 
-.ink-word__head {
-  position: absolute;
-  top: 0;
-  inset-inline-start: 0;
-  white-space: pre;
-  pointer-events: none;
+.ink-word__base {
+  --ink-head-px: 0px;
+  --ink-tail-alpha: 1;
+  /*
+   * One copy of the word, masked — opaque up to the end of the first glyph,
+   * nearly transparent after it. Splitting the word into two elements would
+   * break the cursive join and move its width; this cannot.
+   */
+  -webkit-mask-image: linear-gradient(
+    to var(--ink-mask-to, left),
+    rgb(0 0 0 / 1) 0 var(--ink-head-px),
+    rgb(0 0 0 / var(--ink-tail-alpha)) var(--ink-head-px)
+  );
+  mask-image: linear-gradient(
+    to var(--ink-mask-to, left),
+    rgb(0 0 0 / 1) 0 var(--ink-head-px),
+    rgb(0 0 0 / var(--ink-tail-alpha)) var(--ink-head-px)
+  );
+  transition:
+    opacity var(--ink-fade-duration) var(--ink-fade-ease),
+    --ink-tail-alpha var(--ink-fade-duration) var(--ink-fade-ease);
+}
+
+/* The first glyph sits at the inline start, which flips with direction. */
+[dir='ltr'] .ink-word__base {
+  --ink-mask-to: right;
 }
 
 /*

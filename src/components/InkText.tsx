@@ -186,7 +186,7 @@ interface InkWordProps {
 
 function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProps) {
   const baseRef = useRef<HTMLSpanElement | null>(null)
-  const [headClip, setHeadClip] = useState<string | null>(null)
+  const [headPx, setHeadPx] = useState<number | null>(null)
   const [measureKey, setMeasureKey] = useState(0)
 
   // Re-measure once webfonts have actually landed, and whenever the box resizes.
@@ -196,9 +196,10 @@ function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProp
       if (!cancelled) setMeasureKey((k) => k + 1)
     })
     const el = baseRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return () => {
-      cancelled = true
-    }
+    if (!el || typeof ResizeObserver === 'undefined')
+      return () => {
+        cancelled = true
+      }
     const ro = new ResizeObserver(() => setMeasureKey((k) => k + 1))
     ro.observe(el)
     return () => {
@@ -207,6 +208,13 @@ function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProp
     }
   }, [])
 
+  /**
+   * Level 2 shows the first glyph and little else. Rather than splitting the
+   * word — which would break Arabic cursive shaping and change its width — the
+   * one copy of the word is masked: opaque over the first cluster, nearly
+   * transparent after it. The cluster's advance is measured in context with a
+   * Range, so the join is exactly where the letter really ends.
+   */
   useLayoutEffect(() => {
     const el = baseRef.current
     const node = el?.firstChild
@@ -224,10 +232,10 @@ function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProp
     const head = range.getBoundingClientRect()
     range.detach?.()
     if (!box.width || !head.width) return
-    // Inset relative to the word's own box, so line wrapping never affects it.
-    const left = Math.max(0, head.left - box.left)
-    const right = Math.max(0, box.right - head.right)
-    setHeadClip(`inset(-0.75em ${right.toFixed(2)}px -0.75em ${left.toFixed(2)}px)`)
+    const rtl = getComputedStyle(el).direction === 'rtl'
+    // Distance from the word's own start edge to the end of the first cluster.
+    const extent = rtl ? box.right - head.left : head.right - box.left
+    setHeadPx(Math.max(0, Math.min(box.width, extent)))
   }, [word, measureKey])
 
   const baseOpacity =
@@ -236,9 +244,11 @@ function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProp
       : level === 1
         ? 'var(--ink-level-1)'
         : level === 2
-          ? 'var(--ink-tail)'
+          ? 'var(--ink-head)'
           : '0'
 
+  // Everything past the first cluster is scaled by this; 1 leaves the word whole.
+  const tailAlpha = level === 2 && headPx != null ? 'var(--ink-tail-ratio)' : '1'
   const interactive = peekable && level !== 0
 
   return (
@@ -263,16 +273,16 @@ function InkWord({ word, level, peekable, onPeek, active, errored }: InkWordProp
       aria-label={interactive ? 'Peek at this word' : undefined}
       style={{ cursor: interactive ? 'pointer' : undefined }}
     >
-      <span ref={baseRef} className="ink-word__base" style={{ opacity: baseOpacity }}>
-        {word}
-      </span>
       <span
-        aria-hidden="true"
-        className="ink-word__head"
-        style={{
-          opacity: level === 2 && headClip ? 'var(--ink-head)' : 0,
-          clipPath: headClip ?? 'inset(0 100% 0 0)',
-        }}
+        ref={baseRef}
+        className="ink-word__base"
+        style={
+          {
+            opacity: baseOpacity,
+            '--ink-head-px': `${(headPx ?? 0).toFixed(2)}px`,
+            '--ink-tail-alpha': tailAlpha,
+          } as React.CSSProperties
+        }
       >
         {word}
       </span>
