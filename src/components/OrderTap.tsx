@@ -10,11 +10,15 @@ export function OrderTap({
   content,
   dir = 'rtl',
   lang,
+  passageClassName = 'sacred sacred-sm',
+  wordClassName = 'font-sacred text-[24px] leading-[1.9]',
   onComplete,
 }: {
   content: string
   dir?: 'rtl' | 'ltr'
   lang?: string
+  passageClassName?: string
+  wordClassName?: string
   onComplete: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
 }) {
   const expected = useMemo(() => splitWords(content), [content])
@@ -49,7 +53,7 @@ export function OrderTap({
       <div
         dir={dir}
         lang={lang}
-        className="sacred sacred-sm min-h-[3.2em] border-b border-rule pb-3"
+        className={`${passageClassName} min-h-[3.2em] border-b border-rule pb-3`}
         aria-live="polite"
       >
         {placed.map((i, n) => (
@@ -66,7 +70,7 @@ export function OrderTap({
             onClick={() => tap(chip, chipIndex)}
             lang={lang}
             className={[
-              'min-h-[44px] rounded-md border px-3 py-1 font-sacred text-[24px] leading-[1.9] transition-colors',
+              `min-h-[44px] rounded-md border px-3 py-1 transition-colors ${wordClassName}`,
               used.has(chip.i)
                 ? 'invisible'
                 : wrong === chipIndex

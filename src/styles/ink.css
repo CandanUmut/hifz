@@ -90,3 +90,22 @@
   max-width: 62ch;
   color: rgb(var(--ink-soft));
 }
+
+/* Anything that is not scripture: still the largest thing on screen, but in
+   the book face rather than a Qur'an font it has no glyphs for. */
+.passage {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 26px;
+  line-height: 1.6;
+}
+
+@media (max-width: 420px) {
+  .passage {
+    font-size: 22px;
+  }
+}
+
+.passage-sm {
+  font-size: 20px;
+  line-height: 1.6;
+}

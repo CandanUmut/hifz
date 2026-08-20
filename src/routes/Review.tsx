@@ -15,6 +15,7 @@ import {
 import { ITEM_TYPE_LABELS, type ErrorKind, type SegmentRecord, type TextRecord } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
 import { resolveMeaning } from '@/lib/translations'
+import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
 import { words as splitWords } from '@/lib/text'
 import { useSettings } from '@/state/settings'
 import { useSession, type SessionEntry, type SessionKind } from '@/state/session'
@@ -253,6 +254,7 @@ function Room({ kind }: { kind: SessionKind }) {
               meaningText={meaning.tr?.text ?? meaning.en?.text}
               meaningShown={draft.meaningShown}
               mode={mode}
+              suppressAnswerBlock={showAnswer && draft.checked}
             />
 
             {!showAnswer && mode === 'order_tap' && item.type !== 'meaning' && (
@@ -261,6 +263,8 @@ function Room({ kind }: { kind: SessionKind }) {
                   content={answerSegment.content}
                   dir={text.dir}
                   lang={text.lang}
+                  passageClassName={passageClassSmall(text)}
+                  wordClassName={wordClass(text)}
                   onComplete={(errors) => markChecked(errors)}
                 />
               </div>
@@ -272,6 +276,7 @@ function Room({ kind }: { kind: SessionKind }) {
                   content={answerSegment.content}
                   dir={text.dir}
                   lang={text.lang}
+                  wordClassName={wordClass(text)}
                   onComplete={(errors) => markChecked(errors)}
                 />
               </div>
@@ -283,6 +288,7 @@ function Room({ kind }: { kind: SessionKind }) {
                 errors={draft.errors}
                 dir={text.dir}
                 lang={text.lang}
+                passageClassName={passageClassSmall(text)}
               />
             )}
           </>
@@ -321,7 +327,8 @@ function Room({ kind }: { kind: SessionKind }) {
                     type="button"
                     className="btn-text"
                     onClick={moreHint}
-                    disabled={draft.hintLevel === 0}
+                    disabled={draft.hintLevel === 0 || kind === 'cold'}
+                    title={kind === 'cold' ? 'No hints in a cold check' : undefined}
                   >
                     More hint
                   </button>
@@ -360,7 +367,13 @@ function LearnPane({
   return (
     <div>
       <p className="label mb-4">Learn — nothing is graded here</p>
-      <InkText text={shown.content} level={0} dir={text.dir} lang={text.lang} className="sacred" />
+      <InkText
+        text={shown.content}
+        level={0}
+        dir={text.dir}
+        lang={text.lang}
+        className={passageClass(text)}
+      />
       {meaning.tr && <p className="meaning mt-6">{meaning.tr.text}</p>}
       {meaning.en && <p className="meaning mt-3">{meaning.en.text}</p>}
       {shown.words && shown.words.length > 0 && (
@@ -369,7 +382,7 @@ function LearnPane({
           <div className="flex flex-wrap gap-x-5 gap-y-3" dir={text.dir}>
             {shown.words.map((w, i) => (
               <span key={i} className="text-center">
-                <span className="block font-sacred text-[24px] leading-[1.9]">{w.ar}</span>
+                <span className={`block ${wordClass(text)}`}>{w.ar}</span>
                 <span className="block text-micro text-ink-soft" dir="ltr">
                   {w.en ?? w.translit}
                 </span>
@@ -395,6 +408,7 @@ function Prompt({
   meaningText,
   meaningShown,
   mode,
+  suppressAnswerBlock = false,
 }: {
   entry: SessionEntry
   level: HintLevel
@@ -405,26 +419,31 @@ function Prompt({
   meaningText?: string
   meaningShown: boolean
   mode: string
+  /** The diff below is the answer; do not print the line twice. */
+  suppressAnswerBlock?: boolean
 }) {
   const { item, segment, nextSegment, text } = entry
+  const passage = passageClass(text)
 
   if (item.type === 'link') {
     const tail = splitWords(segment.content).slice(-TAIL_WORDS).join(' ')
     return (
       <div>
-        <InkText text={tail} level={0} dir={text.dir} lang={text.lang} className="sacred" />
+        <InkText text={tail} level={0} dir={text.dir} lang={text.lang} className={passage} />
         <hr className="my-6 border-rule" />
         <p className="label mb-3">What comes next?</p>
-        <InkText
-          text={nextSegment?.content ?? ''}
-          level={level}
-          dir={text.dir}
-          lang={text.lang}
-          className="sacred"
-          peekable={peekable && mode === 'self_grade'}
-          onPeek={onPeek}
-          peekSignal={peekSignal}
-        />
+        {!suppressAnswerBlock && (
+          <InkText
+            text={nextSegment?.content ?? ''}
+            level={level}
+            dir={text.dir}
+            lang={text.lang}
+            className={passage}
+            peekable={peekable && mode === 'self_grade'}
+            onPeek={onPeek}
+            peekSignal={peekSignal}
+          />
+        )}
         {meaningShown && meaningText && <p className="meaning mt-6">{meaningText}</p>}
       </div>
     )
@@ -439,7 +458,7 @@ function Prompt({
           level={0}
           dir={text.dir}
           lang={text.lang}
-          className="sacred"
+          className={passage}
         />
         <hr className="my-6 border-rule" />
         <p className="label mb-3">What does it mean?</p>
@@ -459,7 +478,7 @@ function Prompt({
           level={level}
           dir={text.dir}
           lang={text.lang}
-          className="sacred"
+          className={passage}
           peekable={peekable}
           onPeek={onPeek}
           peekSignal={peekSignal}
@@ -470,16 +489,18 @@ function Prompt({
 
   return (
     <div>
-      <InkText
-        text={segment.content}
-        level={level}
-        dir={text.dir}
-        lang={text.lang}
-        className="sacred"
-        peekable={peekable && mode === 'self_grade'}
-        onPeek={onPeek}
-        peekSignal={peekSignal}
-      />
+      {!suppressAnswerBlock && (
+        <InkText
+          text={segment.content}
+          level={level}
+          dir={text.dir}
+          lang={text.lang}
+          className={passage}
+          peekable={peekable && mode === 'self_grade'}
+          onPeek={onPeek}
+          peekSignal={peekSignal}
+        />
+      )}
       {meaningShown && meaningText && <p className="meaning mt-6">{meaningText}</p>}
     </div>
   )
@@ -490,11 +511,13 @@ function CheckResult({
   errors,
   dir,
   lang,
+  passageClassName,
 }: {
   content: string
   errors: { wordIndex: number; kind: ErrorKind }[]
   dir: 'rtl' | 'ltr'
   lang: string
+  passageClassName: string
 }) {
   return (
     <div className="mt-8 border-t border-rule pt-6">
@@ -503,7 +526,13 @@ function CheckResult({
           ? 'Every word in place.'
           : `${errors.length} off — marked below.`}
       </p>
-      <InitialsDiff content={content} errors={errors} dir={dir} lang={lang} />
+      <InitialsDiff
+        content={content}
+        errors={errors}
+        dir={dir}
+        lang={lang}
+        className={passageClassName}
+      />
     </div>
   )
 }

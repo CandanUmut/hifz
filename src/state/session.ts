@@ -76,8 +76,12 @@ export function initialHintLevel(
   item: ItemRecord,
   aggressiveness: HintAggressiveness,
   kind: SessionKind = 'review',
+  mode: ResponseMode = 'self_grade',
 ): HintLevel {
   if (kind === 'cold') return 4
+  // In the objective modes the chips or the slots are the recall, so leaving
+  // ink on the page would just be showing the answer.
+  if (mode !== 'self_grade' && item.type !== 'meaning') return 4
   const byStreak = Math.min(4, Math.max(1, item.successStreak + 1))
   const shift = aggressiveness === 'gentle' ? -1 : aggressiveness === 'steep' ? 1 : 0
   return Math.min(4, Math.max(0, byStreak + shift)) as HintLevel
@@ -93,12 +97,17 @@ export function methodForMode(mode: ResponseMode): VerificationMethod {
   return mode
 }
 
-function freshDraft(entry: SessionEntry, agg: HintAggressiveness, kind: SessionKind): AttemptDraft {
+function freshDraft(
+  entry: SessionEntry,
+  agg: HintAggressiveness,
+  kind: SessionKind,
+  mode: ResponseMode,
+): AttemptDraft {
   return {
     peeks: 0,
     meaningShown: false,
     startedAt: Date.now(),
-    hintLevel: initialHintLevel(entry.item, agg, kind),
+    hintLevel: initialHintLevel(entry.item, agg, kind, mode),
     errors: [],
     checked: false,
   }
@@ -129,12 +138,23 @@ export const useSession = create<SessionState>()((set, get) => ({
       index: 0,
       phase: entries.length ? phaseFor(entries[0], kind) : 'done',
       mode: entries.length ? modeForItem(entries[0].item, mode) : mode,
-      draft: entries.length ? freshDraft(entries[0], aggressiveness, kind) : EMPTY_DRAFT,
+      draft: entries.length
+        ? freshDraft(entries[0], aggressiveness, kind, modeForItem(entries[0].item, mode))
+        : EMPTY_DRAFT,
       aggressiveness,
       passedFirstTime: 0,
     }),
 
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => {
+    const { entries, index, aggressiveness, kind } = get()
+    const entry = entries[index]
+    set({
+      mode,
+      draft: entry
+        ? { ...get().draft, hintLevel: initialHintLevel(entry.item, aggressiveness, kind, mode) }
+        : get().draft,
+    })
+  },
 
   // "More hint" puts ink back on the page.
   moreHint: () =>
@@ -177,7 +197,12 @@ export const useSession = create<SessionState>()((set, get) => ({
       index: nextIndex,
       phase: phaseFor(nextEntries[nextIndex], kind),
       mode: modeForItem(nextEntries[nextIndex].item, mode),
-      draft: freshDraft(nextEntries[nextIndex], aggressiveness, kind),
+      draft: freshDraft(
+        nextEntries[nextIndex],
+        aggressiveness,
+        kind,
+        modeForItem(nextEntries[nextIndex].item, mode),
+      ),
       passedFirstTime: s.passedFirstTime + firstTime,
     }))
   },

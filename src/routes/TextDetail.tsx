@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/db'
-import { addToPlan, ensurePackText, getItems, getSegments, setIntentForText, tiersFromItems } from '@/db/repo'
+import {
+  addToPlan,
+  deriveIntent,
+  ensurePackText,
+  getItems,
+  getSegments,
+  setIntentForText,
+  tiersFromItems,
+} from '@/db/repo'
 import { InkText } from '@/components/InkText'
 import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { HeatStrip } from '@/components/HeatStrip'
@@ -10,6 +18,7 @@ import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import { INTENT_LABELS, type Intent, type SegmentRecord, type TextRecord } from '@/engine/types'
 import { hasMeaning, resolveMeaning } from '@/lib/translations'
 import { useAudio } from '@/lib/useAudio'
+import { passageClass, wordClass } from '@/lib/typography'
 import { listPacks } from '@/packs/loader'
 import { useSettings } from '@/state/settings'
 
@@ -24,6 +33,7 @@ export default function TextDetail() {
   const [importError, setImportError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Set<number>>(new Set())
   const [openGloss, setOpenGloss] = useState<number | null>(null)
+  const [includeMeaning, setIncludeMeaning] = useState(false)
 
   const packId = params.get('pack')
   const file = params.get('file')
@@ -70,11 +80,11 @@ export default function TextDetail() {
       await addToPlan({
         textId: data.text.id,
         indices,
-        types: { ...DEFAULT_ITEM_TYPES, meaning: hasMeaning(data.segments) && settings.showTranslationTr },
+        types: { ...DEFAULT_ITEM_TYPES, meaning: includeMeaning && hasMeaning(data.segments) },
       })
       setSelection(new Set())
     },
-    [data, settings.showTranslationTr],
+    [data, includeMeaning],
   )
 
   if (importError) {
@@ -94,13 +104,7 @@ export default function TextDetail() {
 
   const { text, segments, items } = data
   const tiers = tiersFromItems(items)
-  const intent = items.length
-    ? items.some((i) => i.intent === 'learning')
-      ? 'learning'
-      : items.some((i) => i.intent === 'maintaining')
-        ? 'maintaining'
-        : 'paused'
-    : 'not_started'
+  const intent = deriveIntent(items)
   const lastEvidence = items
     .filter((i) => i.lastEvidence)
     .sort((a, b) => (b.lastEvidence?.at ?? 0) - (a.lastEvidence?.at ?? 0))[0]?.lastEvidence
@@ -214,7 +218,19 @@ export default function TextDetail() {
 
       {/* One primary action, thumb-reachable. */}
       <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
-        <div className="mx-auto flex max-w-column items-center gap-3 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {hasMeaning(segments) && (
+            <label className="mb-2 flex items-center gap-2 text-micro text-ink-soft">
+              <input
+                type="checkbox"
+                checked={includeMeaning}
+                onChange={(e) => setIncludeMeaning(e.target.checked)}
+                className="h-4 w-4 accent-[rgb(var(--focus))]"
+              />
+              Also schedule meanings
+            </label>
+          )}
+          <div className="flex items-center gap-3">
           <p className="me-auto text-micro text-ink-soft">
             {selection.size > 0
               ? `${selection.size} selected`
@@ -241,6 +257,7 @@ export default function TextDetail() {
               Start review
             </button>
           )}
+          </div>
         </div>
       </div>
     </section>
@@ -315,7 +332,7 @@ function Ayah({
         level={0}
         dir={text.dir}
         lang={text.lang}
-        className="sacred"
+        className={passageClass(text)}
         activeWordIndex={playing ? audio.activeWord : null}
       />
 
@@ -330,7 +347,7 @@ function Ayah({
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3" dir={text.dir}>
           {segment.words.map((w, i) => (
             <span key={i} className="text-center">
-              <span className="block font-sacred text-[24px] leading-[1.9]">{w.ar}</span>
+              <span className={`block ${wordClass(text)}`}>{w.ar}</span>
               <span className="block text-micro text-ink-soft" dir="ltr">
                 {w.en ?? w.translit}
               </span>

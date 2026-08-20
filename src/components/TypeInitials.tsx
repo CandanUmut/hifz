@@ -11,11 +11,13 @@ export function TypeInitials({
   content,
   dir = 'rtl',
   lang,
+  wordClassName = 'font-sacred text-[24px] leading-[1.9]',
   onComplete,
 }: {
   content: string
   dir?: 'rtl' | 'ltr'
   lang?: string
+  wordClassName?: string
   onComplete: (errors: { wordIndex: number; kind: ErrorKind }[]) => void
 }) {
   const expected = useMemo(() => initialsOf(content), [content])
@@ -52,7 +54,7 @@ export function TypeInitials({
               key={i}
               lang={lang}
               className={[
-                'flex h-11 w-11 items-center justify-center rounded-md border font-sacred text-[22px]',
+                `flex h-11 w-11 items-center justify-center rounded-md border ${wordClassName}`,
                 state === 'empty'
                   ? 'border-rule text-ink-soft'
                   : state === 'ok'
@@ -78,8 +80,8 @@ export function TypeInitials({
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
-          className="mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3
-            font-sacred text-[22px] text-ink"
+          className={`mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3
+            text-ink ${wordClassName}`}
           aria-label={`Type the first letter of each of the ${expected.length} words`}
         />
       </label>
@@ -102,16 +104,18 @@ export function InitialsDiff({
   errors,
   dir = 'rtl',
   lang,
+  className = 'sacred sacred-sm',
 }: {
   content: string
   errors: { wordIndex: number }[]
   dir?: 'rtl' | 'ltr'
   lang?: string
+  className?: string
 }) {
   const wordList = splitWords(content)
   const bad = new Set(errors.map((e) => e.wordIndex))
   return (
-    <p dir={dir} lang={lang} className="sacred sacred-sm">
+    <p dir={dir} lang={lang} className={className}>
       {wordList.map((w, i) => (
         <span key={i} className={bad.has(i) ? 'text-correction' : undefined}>
           {w}{' '}
