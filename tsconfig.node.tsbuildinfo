@@ -1,1 +1,0 @@
-{"root":["./vite.config.ts","./scripts/build-packs.ts","./scripts/check-packs.ts","./scripts/fetch-fonts.ts","./scripts/make-icons.ts","./tailwind.config.ts","./vitest.config.ts"],"version":"5.9.3"}

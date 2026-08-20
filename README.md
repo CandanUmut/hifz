@@ -26,6 +26,14 @@ measured space. Word widths and line breaks never move between levels, so it
 reads as ink drying rather than as redaction. Tap any faded word to peek for
 1.8 seconds — and every peek is recorded and caps that item's grade.
 
+**It knows which lines you will confuse.** Near-identical passages —
+*mutashābihāt* — are where recitation takes the wrong branch after the joins.
+The app builds an interference graph over the texts on your device and shows
+you the twin, with the words that tell them apart marked, at the moment you
+have just recalled the line. In Juz ʿAmma that finds the pairs any ḥāfiẓ would
+name: 79:33 with 80:32, 82:13 with 83:22, 84:2 with 84:5, al-Falaq against
+an-Nas.
+
 **It never claims you know something.** Two separate statuses, never merged:
 
 | | |
@@ -39,6 +47,28 @@ streaks anywhere in the product. The honest metric is the **cold check** — a
 monthly run over things you have not seen in thirty days, starting from blank,
 with no peeks: *"You recalled 7 of 10 first-time."*
 
+## Four ways to answer
+
+`Self-check` (fastest, lowest confidence) · `Tap in order` · `Type initials`
+(fast to type, hard to fake) · `Recite out loud`.
+
+The last one listens on your device and shows you what it heard — no audio
+leaves the browser. It is opt-in and experimental, because it needs a
+Qur'an-tuned speech model of about 150 MB, the only thing this app ever fetches
+from a third party. See [`docs/RECITATION.md`](docs/RECITATION.md), including
+how to self-host the model and avoid that too.
+
+## Install it
+
+It is a PWA: install it from your browser and it opens from the home screen,
+full screen, and works with no connection. The app, the fonts and the pack list
+are stored for offline use; a surah is kept the first time you open it. Only
+recitation audio needs the network.
+
+`main` deploys to GitHub Pages on every push. One build serves a domain root
+and a project sub-path alike — relative asset paths and a hash router, no
+rebuild for a different base.
+
 ## Running it
 
 ```sh
@@ -46,6 +76,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # static files in dist/ — deploy anywhere
 npm test             # engine tests
+npm run check:packs  # validate the bundled content against docs/pack-schema.md
 ```
 
 `/#/design` is the ink-fade bench: one ayah at all five levels in both themes,
@@ -96,7 +127,8 @@ React Router. No backend. Fonts are self-hosted under `public/fonts`, so the
 built app makes no third-party request at all until you press play on audio.
 
 ```
-src/engine/   data model, FSRS wrapper, item generation, evidence tiers, segmentation
+src/engine/   data model, FSRS wrapper, item generation, evidence tiers,
+              segmentation, the interference graph, recitation matching
 src/db/       Dexie schema and every read and write
 src/packs/    pack loading
 src/routes/   Today · Library · Text detail · Review · Cold check · Add · Progress · Settings

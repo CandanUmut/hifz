@@ -73,6 +73,20 @@ above.
 Audio is the one thing the app fetches over the network at runtime, and only
 when the user presses play.
 
+## Speech model (opt-in)
+
+Not bundled and not fetched unless the reader turns on the recitation check.
+
+| | |
+|---|---|
+| Model | ONNX build of Tarteel's Whisper fine-tuned on Qur'anic recitation |
+| From | [`eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran`](https://huggingface.co/eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran), converted from [`tarteel-ai/whisper-base-ar-quran`](https://huggingface.co/tarteel-ai/whisper-base-ar-quran) |
+| Licence | Apache 2.0 |
+| Size | about 150 MB, downloaded once and cached |
+
+This is the only third-party request the app ever makes, and it can be avoided
+entirely by self-hosting the model — see [`RECITATION.md`](./RECITATION.md).
+
 ## Typefaces
 
 | Family | Use | Licence |

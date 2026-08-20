@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type ThemeChoice = 'auto' | 'gunduz' | 'gece'
-export type ResponseMode = 'self_grade' | 'order_tap' | 'type_initials'
+export type ResponseMode = 'self_grade' | 'order_tap' | 'type_initials' | 'recite_asr'
 export type HintAggressiveness = 'gentle' | 'normal' | 'steep'
 
 export interface Settings {
@@ -21,6 +21,11 @@ export interface Settings {
   showTransliteration: boolean
   /** Which transliteration edition, from a pack's `transliterations`. */
   translitEdition: string
+  /**
+   * Recitation checking is off until asked for: it is the one feature that
+   * downloads anything from a third party.
+   */
+  reciteEnabled: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showTranslationEn: false,
   showTransliteration: true,
   translitEdition: 'easy',
+  reciteEnabled: false,
 }
 
 interface SettingsStore extends Settings {

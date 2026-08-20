@@ -53,7 +53,16 @@ export default defineConfig({
           'packs/index.json',
           'packs/*/pack.json',
         ],
-        globIgnores: ['packs/*/[0-9]*.json'],
+        globIgnores: [
+          'packs/*/[0-9]*.json',
+          // The speech stack is opt-in and enormous; it must never ride along
+          // in the install of an app most readers use without it.
+          'assets/transformers*.js',
+          'assets/ort-*',
+          '**/*.wasm',
+        ],
+        // The 23 MB onnxruntime binary would blow past the default 2 MB cap.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         /*

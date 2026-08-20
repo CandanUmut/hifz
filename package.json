@@ -17,6 +17,7 @@
     "icons": "tsx scripts/make-icons.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "react": "^18.3.1",

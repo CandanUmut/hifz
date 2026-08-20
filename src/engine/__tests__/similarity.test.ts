@@ -9,6 +9,7 @@ import {
   similarity,
   type SegmentLike,
 } from '../similarity'
+import { checkRecitation, suggestedRating } from '../recitation'
 
 const seg = (id: string, content: string, index = 0): SegmentLike => ({
   id,
@@ -141,5 +142,47 @@ describe('over the shipped packs', () => {
     // Juz Amma is repetitive, but most of it is still unique.
     expect(graph.size).toBeGreaterThan(20)
     expect(graph.size).toBeLessThan(segments.length * 0.3)
+  })
+})
+
+describe('recitation check', () => {
+  const ayah = ['قُلْ', 'هُوَ', 'ٱللَّهُ', 'أَحَدٌ']
+
+  it('forgives orthography a transcript will not reproduce', () => {
+    // Exactly what the model returned for 112:1 in the feasibility run.
+    const check = checkRecitation('قُلْ هُوَ اللَّهُ أَحَدٌ', ayah)
+    expect(check.missing).toEqual([])
+    expect(check.extra).toEqual([])
+    expect(check.score).toBe(1)
+    expect(suggestedRating(check)).toBe(3)
+  })
+
+  it('forgives the dropped small waw in 112:4', () => {
+    const check = checkRecitation('وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ', [
+      'وَلَمْ',
+      'يَكُن',
+      'لَّهُۥ',
+      'كُفُوًا',
+      'أَحَدٌۢ',
+    ])
+    expect(check.score).toBe(1)
+  })
+
+  it('names the word that was skipped', () => {
+    const check = checkRecitation('قل هو احد', ayah)
+    expect(check.missing).toEqual([2])
+    expect(suggestedRating(check)).toBe(1)
+  })
+
+  it('never suggests Easy — recognition mishears, and a grade is the reader’s', () => {
+    const perfect = checkRecitation('قُلْ هُوَ اللَّهُ أَحَدٌ', ayah)
+    expect(suggestedRating(perfect)).toBeLessThan(4)
+  })
+
+  it('treats silence as nothing recalled rather than as a pass', () => {
+    const check = checkRecitation('', ayah)
+    expect(check.score).toBe(0)
+    expect(check.missing).toHaveLength(4)
+    expect(suggestedRating(check)).toBe(1)
   })
 })

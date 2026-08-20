@@ -205,6 +205,8 @@ export interface AttemptRecord {
   /** Hint level the user was on when they answered. */
   hintLevel?: number
   errors?: { wordIndex: number; kind: ErrorKind }[]
+  /** Transcript from a recitation check. Stays on the device like everything else. */
+  heard?: string
   cold?: boolean
 }
 
