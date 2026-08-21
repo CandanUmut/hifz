@@ -74,6 +74,12 @@ export default function Library() {
     return { texts, byText }
   }, [])
 
+  // The colour key means something only once something has been graded.
+  const anyEvidence = useMemo(
+    () => [...(local?.byText.values() ?? [])].some((list) => list.some((i) => i.lastEvidence)),
+    [local],
+  )
+
   const userRows: Row[] = useMemo(() => {
     if (!local) return []
     return local.texts
@@ -92,8 +98,9 @@ export default function Library() {
     <section>
       <h1 className="text-large font-medium">{t('library.title')}</h1>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter">
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Full width, so the last filter is never clipped behind the sort. */}
+        <div className="-mx-1 flex w-full gap-1 overflow-x-auto px-1" role="group" aria-label="Filter">
           {FILTERS.map((f) => (
             <button
               key={f.id}
@@ -101,7 +108,7 @@ export default function Library() {
               onClick={() => setFilter(f.id)}
               aria-pressed={filter === f.id}
               className={[
-                'min-h-[44px] rounded-md px-3 text-small',
+                'min-h-[44px] shrink-0 rounded-md px-3 text-small',
                 filter === f.id ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
               ].join(' ')}
             >
@@ -109,7 +116,7 @@ export default function Library() {
             </button>
           ))}
         </div>
-        <label className="ms-auto flex items-center gap-2 text-micro text-ink-soft">
+        <label className="ms-auto flex shrink-0 items-center gap-2 text-micro text-ink-soft">
           <span className="sr-only">Sort</span>
           <select
             value={sort}
@@ -125,9 +132,12 @@ export default function Library() {
         </label>
       </div>
 
-      <div className="mt-4">
-        <HeatLegend />
-      </div>
+      {/* The key explains colours nobody has earned yet on a first visit. */}
+      {anyEvidence && (
+        <div className="mt-4">
+          <HeatLegend />
+        </div>
+      )}
 
       {error && (
         <p className="mt-6 text-small text-correction">{error}</p>
@@ -244,9 +254,13 @@ function TextRow({ row }: { row: Row }) {
             })}
             {inPlan > 0 && ` · ${t('library.inPlan', { count: inPlan })}`}
           </span>
-          <span className="ms-auto">
-            <HeatStrip count={row.segmentCount} tiers={tiers} />
-          </span>
+          {/* A row of empty squares for a surah nobody has opened says nothing
+              and takes two lines to say it. */}
+          {inPlan > 0 && (
+            <span className="ms-auto">
+              <HeatStrip count={row.segmentCount} tiers={tiers} />
+            </span>
+          )}
         </div>
         {last && (
           <div className="mt-1.5 flex justify-end">

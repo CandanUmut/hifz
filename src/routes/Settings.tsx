@@ -4,6 +4,7 @@ import { db } from '@/db/db'
 import { deleteAll, exportAll } from '@/db/repo'
 import type { EditionInfo, TransliterationInfo } from '@/engine/types'
 import { useT } from '@/i18n'
+import type { StringKey } from '@/i18n/strings'
 import { ASR_MODEL_MB } from '@/lib/asr-model'
 import { useInstallPrompt } from '@/lib/useInstallPrompt'
 import { useSettings, type ThemeChoice, type UiLang } from '@/state/settings'
@@ -13,9 +14,18 @@ import { useSettings, type ThemeChoice, type UiLang } from '@/state/settings'
  * slider, a hint-aggressiveness ramp and four answer modes; none of it meant
  * anything to someone trying to memorise a surah, and all of it was in the way.
  */
+/** Pack ids are stable, so the interface can name them in the reader's language. */
+function styleLabel(id: string, fallback: string, t: (key: StringKey) => string): string {
+  if (id === 'easy') return t('translit.easy')
+  if (id === 'scholarly') return t('translit.scholarly')
+  if (id === 'aligned') return t('translit.aligned')
+  return fallback
+}
+
 export default function Settings() {
   const settings = useSettings()
   const set = useSettings((s) => s.set)
+  const chooseLang = useSettings((s) => s.chooseLang)
   const t = useT()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const install = useInstallPrompt()
@@ -56,7 +66,10 @@ export default function Settings() {
             <Pick
               key={lang}
               active={settings.lang === lang}
-              onClick={() => set('lang', lang)}
+              /* The translation follows the interface, because to almost
+                 everyone they are one choice — and both toggles are visible a
+                 few rows below, so nothing is decided behind their back. */
+              onClick={() => chooseLang(lang)}
               label={lang === 'tr' ? t('lang.turkish') : t('lang.english')}
             />
           ))}
@@ -112,7 +125,9 @@ export default function Settings() {
                 key={option.id}
                 active={settings.translitEdition === option.id}
                 onClick={() => set('translitEdition', option.id)}
-                label={option.title}
+                /* The pack names these in English because a pack is data.
+                   The interface is not data. */
+                label={styleLabel(option.id, option.title, t)}
               />
             ))}
           </Row>

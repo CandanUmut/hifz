@@ -19,6 +19,7 @@ import type { Intent, SegmentRecord, TextRecord } from '@/engine/types'
 import {
   hasMeaning,
   hasTransliteration,
+  meaningLines,
   resolveMeaning,
   resolveTransliteration,
 } from '@/lib/translations'
@@ -152,6 +153,29 @@ export default function TextDetail() {
     ? [...studyIndices].filter((i): i is number => i != null).sort((a, b) => a - b)
     : unlisted.slice(0, settings.memorizeBatch))
 
+  /*
+   * Both primaries add what they need first. Studying a surah nobody has
+   * listed yet means the next few ayah; reviewing one means all of it, because
+   * "I want to go over this" is about the surah, not about a batch size.
+   */
+  const startStudy = async () => {
+    const batch = studyBatch.length > 0 ? studyBatch : segments.slice(0, settings.memorizeBatch).map((s) => s.index)
+    if (!batch.length) return
+    if (studyIndices.size === 0) await add(batch, 'study')
+    navigate(
+      `/memorize?text=${encodeURIComponent(text.id)}&from=${batch[0]}&to=${batch[batch.length - 1]}`,
+    )
+  }
+
+  const startReview = async () => {
+    if (reviewIndices.size === 0) {
+      const all = segments.map((s) => s.index)
+      if (!all.length) return
+      await add(all, 'review')
+    }
+    navigate(`/practise?text=${encodeURIComponent(text.id)}`)
+  }
+
   const toggle = (index: number) =>
     setSelection((prev) => {
       const next = new Set(prev)
@@ -178,9 +202,12 @@ export default function TextDetail() {
           <EvidenceChip last={lastEvidence} />
         </div>
 
-        <div className="mt-4">
-          <HeatStrip count={segments.length} tiers={tiers} max={segments.length} />
-        </div>
+        {/* A row of empty squares before you have started says nothing. */}
+        {items.length > 0 && (
+          <div className="mt-4">
+            <HeatStrip count={segments.length} tiers={tiers} max={segments.length} />
+          </div>
+        )}
 
         {items.length > 0 && (
           <div className="mt-5">
@@ -201,26 +228,36 @@ export default function TextDetail() {
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Toggle
-            label={t('text.turkish')}
-            on={settings.showTranslationTr}
-            onChange={(v) => setSetting('showTranslationTr', v)}
-          />
-          <Toggle
-            label={t('text.english')}
-            on={settings.showTranslationEn}
-            onChange={(v) => setSetting('showTranslationEn', v)}
-          />
-          {hasTransliteration(segments) && (
+        {/*
+          Folded away. These are preferences that happen to be reachable here,
+          and having three checkboxes above the surah meant the page opened on
+          its own settings rather than on the text.
+        */}
+        <details className="group mt-5">
+          <summary className="label flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden">
+            <span className="text-ink-soft transition-transform group-open:rotate-90">›</span>
+            {t('text.display')}
+          </summary>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Toggle
-              label={t('text.transliteration')}
-              on={settings.showTransliteration}
-              onChange={(v) => setSetting('showTransliteration', v)}
+              label={t('text.turkish')}
+              on={settings.showTranslationTr}
+              onChange={(v) => setSetting('showTranslationTr', v)}
             />
-          )}
-
-        </div>
+            <Toggle
+              label={t('text.english')}
+              on={settings.showTranslationEn}
+              onChange={(v) => setSetting('showTranslationEn', v)}
+            />
+            {hasTransliteration(segments) && (
+              <Toggle
+                label={t('text.transliteration')}
+                on={settings.showTransliteration}
+                onChange={(v) => setSetting('showTransliteration', v)}
+              />
+            )}
+          </div>
+        </details>
         {audio.available && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {audio.playingIndex != null ? (
@@ -355,26 +392,29 @@ export default function TextDetail() {
                   </button>
                 </div>
               )}
+              {/*
+                Neither of these is ever dead. "Review now" used to be
+                disabled until the surah had separately been put on the review
+                list, which left Study as the only lit button — so someone who
+                simply wanted to go over a surah they already knew was made to
+                study it first. A button that names an intention carries it
+                out: if there is nothing on the list yet, tapping adds the
+                whole surah and goes.
+              */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  className="btn-primary"
-                  disabled={studyBatch.length === 0}
-                  onClick={() =>
-                    navigate(
-                      `/memorize?text=${encodeURIComponent(text.id)}&from=${studyBatch[0]}&to=${studyBatch[studyBatch.length - 1]}`,
-                    )
-                  }
-                >
-                  {t('text.study', { count: studyBatch.length })}
-                </button>
-                <button
-                  type="button"
                   className="btn-secondary"
-                  disabled={reviewIndices.size === 0}
-                  onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
+                  onClick={() => void startStudy()}
                 >
-                  {t('text.reviewNow', { count: reviewIndices.size })}
+                  {studyBatch.length > 0
+                    ? t('text.study', { count: studyBatch.length })
+                    : t('text.studyAll')}
+                </button>
+                <button type="button" className="btn-primary" onClick={() => void startReview()}>
+                  {reviewIndices.size > 0
+                    ? t('text.reviewNow', { count: reviewIndices.size })
+                    : t('text.reviewAll')}
                 </button>
               </div>
             </>
@@ -473,12 +513,11 @@ function Ayah({
         className="mt-2"
       />
 
-      {settings.showTranslationTr && meaning.tr && (
-        <p className="meaning mt-3">{meaning.tr.text}</p>
-      )}
-      {settings.showTranslationEn && meaning.en && (
-        <p className="meaning mt-2">{meaning.en.text}</p>
-      )}
+      {meaningLines(meaning, settings).map((line) => (
+        <p key={line.title} className="meaning mt-3">
+          {line.text}
+        </p>
+      ))}
 
       {twins.length > 0 && (
         <button

@@ -49,6 +49,8 @@ export const DEFAULT_SETTINGS: Settings = {
 
 interface SettingsStore extends Settings {
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void
+  /** The interface language, and the translations that go with it. */
+  chooseLang: (lang: UiLang) => void
   replaceAll: (settings: Partial<Settings>) => void
   reset: () => void
 }
@@ -58,6 +60,13 @@ export const useSettings = create<SettingsStore>()(
     (set) => ({
       ...DEFAULT_SETTINGS,
       set: (key, value) => set({ [key]: value } as Partial<Settings>),
+      /*
+       * Picking English used to leave the Turkish translation switched on
+       * under every ayah, because the language choice and the translation
+       * choice were unrelated settings. They are the same choice to the reader.
+       */
+      chooseLang: (lang) =>
+        set({ lang, showTranslationTr: lang === 'tr', showTranslationEn: lang === 'en' }),
       replaceAll: (settings) => set({ ...DEFAULT_SETTINGS, ...settings }),
       reset: () => set({ ...DEFAULT_SETTINGS }),
     }),

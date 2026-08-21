@@ -108,6 +108,8 @@ export const STRINGS = {
   'text.addAllToStudy': { en: 'Add the whole surah to study', tr: 'Tüm sureyi çalışmaya ekle' },
   'text.addAllToReview': { en: 'Add the whole surah to review', tr: 'Tüm sureyi tekrara ekle' },
   'text.study': { en: 'Study ({count})', tr: 'Çalış ({count})' },
+  'text.studyAll': { en: 'Start memorising', tr: 'Ezberlemeye başla' },
+  'text.reviewAll': { en: 'Review the whole thing', tr: 'Baştan sona tekrar et' },
   'text.reviewNow': { en: 'Review ({count})', tr: 'Tekrar et ({count})' },
   'text.onStudyList': { en: '{count} to study', tr: 'Çalışılacak {count} ayet' },
   'text.onReviewList': { en: '{count} in review', tr: 'Tekrarda {count} ayet' },
@@ -125,6 +127,7 @@ export const STRINGS = {
     tr: 'Okuyuş çalınamadı. Bağlantını kontrol et.',
   },
   'text.stop': { en: 'Stop', tr: 'Dur' },
+  'text.display': { en: 'What to show', tr: 'Neler görünsün' },
   'text.turkish': { en: 'Turkish', tr: 'Türkçe meal' },
   'text.english': { en: 'English', tr: 'İngilizce meal' },
   'text.transliteration': { en: 'Latin letters', tr: 'Latin harfleri' },
@@ -281,6 +284,38 @@ export const STRINGS = {
   },
   'recite.failed': { en: 'That recording could not be read.', tr: 'Bu kayıt okunamadı.' },
   'recite.downloadFailed': { en: 'The model could not be downloaded.', tr: 'Model indirilemedi.' },
+  // Which recogniser, and where the audio goes — said next to the button.
+  'recite.browserNote': {
+    en: 'Using your browser’s speech recognition. Some browsers send the audio to their own servers.',
+    tr: 'Tarayıcının ses tanımasını kullanıyor. Bazı tarayıcılar sesi kendi sunucularına gönderir.',
+  },
+  'recite.onDeviceNote': {
+    en: 'Listening on this device. Nothing is sent anywhere.',
+    tr: 'Bu cihazda dinliyor. Hiçbir yere gönderilmiyor.',
+  },
+  'recite.useOnDevice': { en: 'Keep it on this device', tr: 'Cihazımdan çıkmasın' },
+  'recite.useOnDeviceDownload': {
+    en: 'Keep it on this device ({mb} MB)',
+    tr: 'Cihazımdan çıkmasın ({mb} MB)',
+  },
+  'recite.useBrowser': { en: 'use the browser instead', tr: 'tarayıcınınkini kullan' },
+  'recite.useBrowserInstead': {
+    en: 'Or use your browser’s recognition — nothing to download',
+    tr: 'Ya da tarayıcının ses tanımasını kullan — indirme yok',
+  },
+  'recite.listeningNow': { en: 'Listening…', tr: 'Dinliyor…' },
+  'recite.speechNetwork': {
+    en: 'Your browser’s speech recognition could not be reached. Check the connection, or switch to the on-device model.',
+    tr: 'Tarayıcının ses tanımasına ulaşılamadı. Bağlantını kontrol et ya da cihaz içi modele geç.',
+  },
+  'recite.speechUnavailable': {
+    en: 'This browser cannot recognise speech in this language. The on-device model can.',
+    tr: 'Bu tarayıcı bu dilde konuşmayı tanıyamıyor. Cihaz içi model tanıyabilir.',
+  },
+  'recite.modelStopped': {
+    en: 'The on-device model stopped — this device may not have the memory for it. Your browser’s recognition works without a download.',
+    tr: 'Cihaz içi model durdu — bu cihazın belleği yetmemiş olabilir. Tarayıcının ses tanıması indirme gerektirmez.',
+  },
   'recite.tapToStart': { en: 'Tap and recite', tr: 'Dokun ve oku' },
   'recite.tapHint': {
     en: 'Words appear as they are heard. Nothing is shown before you say it.',
@@ -346,8 +381,8 @@ export const STRINGS = {
   // --- progress ------------------------------------------------------------
   'progress.title': { en: 'Progress', tr: 'Durum' },
   'progress.summary': {
-    en: '{count} items in your plan. No streaks here — the cold check is the number that counts.',
-    tr: 'Listende {count} parça var. Burada seri yok — asıl rakam soğuk test.',
+    en: '{count} items in your plan. Days add up on Today; what is proved is here.',
+    tr: 'Listende {count} parça var. Günler Bugün’de birikir; kanıtlanan burada.',
   },
   'progress.empty': {
     en: 'Nothing in your plan yet, so there is nothing honest to show.',
@@ -389,6 +424,9 @@ export const STRINGS = {
     en: 'Open a surah first and the available translations appear here.',
     tr: 'Önce bir sure aç, mevcut mealler burada görünecek.',
   },
+  'translit.easy': { en: 'Easy to read', tr: 'Kolay okunur' },
+  'translit.scholarly': { en: 'Scholarly', tr: 'Akademik' },
+  'translit.aligned': { en: 'Word by word', tr: 'Kelime kelime' },
   'settings.transliteration': { en: 'Latin letters', tr: 'Latin harfleri' },
   'settings.showTranslit': { en: 'Show the ayah in Latin letters', tr: 'Ayeti Latin harfleriyle de göster' },
   'settings.translitNote': {
@@ -398,8 +436,8 @@ export const STRINGS = {
   'settings.reciteGroup': { en: 'Checking your recitation', tr: 'Okuyuşunu kontrol etme' },
   'settings.reciteEnable': { en: 'Let me recite out loud and be checked', tr: 'Sesli okuyup kontrol edilebileyim' },
   'settings.reciteNote': {
-    en: 'The listening happens on your device — your voice is never uploaded. It needs a one-time download of about {mb} MB.',
-    tr: 'Dinleme cihazında olur — sesin hiçbir yere gönderilmez. Bir kerelik yaklaşık {mb} MB indirme gerektirir.',
+    en: 'Offered on every review screen. It uses your browser’s own speech recognition by default — nothing to download, though some browsers send the audio to their servers. You can switch to a listener that runs entirely on this device; that one costs a one-time download of about {mb} MB.',
+    tr: 'Her tekrar ekranında sunuluyor. Varsayılan olarak tarayıcının kendi ses tanımasını kullanır — indirme yok, ama bazı tarayıcılar sesi kendi sunucularına gönderir. Tamamen bu cihazda çalışan dinleyiciye geçebilirsin; o bir kerelik yaklaşık {mb} MB indirme ister.',
   },
   'settings.pace': { en: 'Pace', tr: 'Tempo' },
   'settings.newPerDay': { en: 'New ayah per day — {count}', tr: 'Günde yeni ayet — {count}' },

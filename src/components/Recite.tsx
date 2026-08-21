@@ -10,11 +10,26 @@ import {
 } from '@/engine/recitation'
 import { useT } from '@/i18n'
 import { useRecorder } from '@/lib/useRecorder'
+import {
+  browserSpeechAvailable,
+  startBrowserSpeech,
+  type BrowserSpeech,
+  type SpeechFailure,
+} from '@/lib/speech'
 import type { GradeRating } from '@/engine/scheduler'
 
-export type RecitePhase = 'checking_cache' | 'need_model' | 'loading' | 'ready' | 'thinking' | 'result'
+export type RecitePhase = 'idle' | 'need_model' | 'loading' | 'listening' | 'thinking' | 'result'
 
-/** How often the running transcript catches up while you are still speaking. */
+/**
+ * Which recogniser is doing the listening.
+ *
+ * `browser` is the one the browser already has: nothing to download, results
+ * while you are still speaking. `ondevice` is the Qur'an-tuned Whisper, which
+ * costs 150 MB and a few seconds a pass but never sends anything anywhere.
+ */
+export type Engine = 'browser' | 'ondevice'
+
+/** How often the on-device transcript catches up while you are speaking. */
 const INTERIM_MS = 1200
 /** Less than this and there is not enough voice to read yet (~0.7 s). */
 const MIN_SAMPLES = 11_000
@@ -22,45 +37,63 @@ const MIN_SAMPLES = 11_000
 /**
  * Reciting out loud, and watching the line fill in.
  *
- * The old panel printed the whole ayah in grey and lit up the words it
- * recognised — which meant the answer was on screen the entire time you were
- * meant to be reciting it from memory. Nothing was being tested.
- *
- * Now every word starts as a blank the exact width of the word it hides, and a
- * word only appears once it has been heard. The line is a record of what you
- * said, not a crib of what you were supposed to say.
+ * Every word starts as a blank the exact width of the word it hides, and a
+ * word appears only once it has been heard — so the answer is never on screen
+ * while you are trying to remember it, and what you end up looking at is a
+ * record of what you said rather than a crib of what you were supposed to say.
  *
  * It comes in two pieces because it belongs in two places: the line and the
  * microphone go where the reader is looking, in the middle of the screen, and
- * only the buttons go in the footer. Squeezing all of it into the footer put
- * the thing being tested below the thing testing it, under an empty card.
+ * only the buttons go in the footer.
  */
 export function useRecitation({
   expectedWords,
+  lang,
   onChecked,
 }: {
   expectedWords: string[]
+  lang?: string
   onChecked: (check: RecitationCheck, suggested: GradeRating) => void
 }) {
   const recorder = useRecorder()
   const t = useT()
-  const [phase, setPhase] = useState<RecitePhase>('checking_cache')
+
+  const [engine, setEngine] = useState<Engine>(() =>
+    browserSpeechAvailable() ? 'browser' : 'ondevice',
+  )
+  const [phase, setPhase] = useState<RecitePhase>('idle')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState<RecitationCheck | null>(null)
   const [silent, setSilent] = useState(false)
+  const [modelReady, setModelReady] = useState(false)
   const busy = useRef(false)
   const pollRef = useRef<() => Promise<void>>(async () => {})
+  const speech = useRef<BrowserSpeech | null>(null)
+  const heardText = useRef('')
 
   useEffect(() => {
     let cancelled = false
     asrCached().then((cached) => {
-      if (!cancelled) setPhase(cached ? 'ready' : 'need_model')
+      if (cancelled) return
+      setModelReady(cached)
+      // Someone who already paid the download gets the recogniser they paid for.
+      if (cached) setEngine('ondevice')
+      else if (!browserSpeechAvailable()) setPhase('need_model')
     })
     return () => {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (engine === 'ondevice' && !modelReady) setPhase('need_model')
+    else if (phase === 'need_model') setPhase('idle')
+    // Only the engine switch should move the phase; `phase` is read, not watched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, modelReady])
+
+  useEffect(() => () => speech.current?.stop(), [])
 
   const fetchModel = useCallback(async () => {
     setPhase('loading')
@@ -69,88 +102,139 @@ export function useRecitation({
       await loadAsr((p) => {
         if (p.total > 0) setProgress(Math.round((p.loaded / p.total) * 100))
       })
-      setPhase('ready')
+      setModelReady(true)
+      setEngine('ondevice')
+      setPhase('idle')
     } catch {
       setError(t('recite.downloadFailed'))
       setPhase('need_model')
     }
   }, [t])
 
-  const read = useCallback(
-    async (samples: Float32Array) => checkRecitation(await transcribe(samples), expectedWords),
+  const grade = useCallback(
+    (text: string) => {
+      const check = checkRecitation(text, expectedWords)
+      setLive(check)
+      return check
+    },
     [expectedWords],
   )
 
-  /* Whisper is not a streaming model, so the running transcript is the whole
-     recording so far, re-read as often as the device can manage. It trails
-     your voice rather than keeping up with it word by word — but it is honest
-     about what it has actually heard, which is what makes the blanks mean
-     something. */
+  /* Whisper is not a streaming model, so the running transcript is the last
+     stretch of the recording, re-read as often as the device can manage. */
   const pollInterim = useCallback(async () => {
     if (busy.current) return
     const samples = recorder.snapshot()
     if (!samples || samples.length < MIN_SAMPLES) return
     busy.current = true
     try {
-      setLive(await read(samples))
+      grade(await transcribe(samples))
     } catch {
       /* the next tick will try again */
     } finally {
       busy.current = false
     }
-  }, [read, recorder])
+  }, [grade, recorder])
 
   /*
-   * The interval is armed once per recording, and reaches for the newest poll
-   * through a ref.
-   *
-   * Depending on `pollInterim` directly looked right and did nothing at all:
-   * the level meter re-renders about twelve times a second, every render made
-   * a new poll, and the effect tore the interval down and started it again
-   * before it had ever run. Which is why the line stayed blank while you were
-   * speaking and only filled in at the end.
+   * The interval is armed once per recording and reaches for the newest poll
+   * through a ref. Depending on `pollInterim` directly looked right and did
+   * nothing: the level meter re-renders about twelve times a second, every
+   * render made a new poll, and the effect tore the interval down and started
+   * it again before it had ever run.
    */
   useEffect(() => {
     pollRef.current = pollInterim
   }, [pollInterim])
 
   useEffect(() => {
-    if (recorder.state !== 'recording') return
+    if (engine !== 'ondevice' || recorder.state !== 'recording') return
     const id = window.setInterval(() => void pollRef.current(), INTERIM_MS)
     return () => window.clearInterval(id)
-  }, [recorder.state])
+  }, [engine, recorder.state])
+
+  const onSpeechFailure = useCallback(
+    (kind: SpeechFailure) => {
+      speech.current?.stop()
+      speech.current = null
+      setPhase('idle')
+      setError(
+        kind === 'denied'
+          ? t('recite.denied')
+          : kind === 'network'
+            ? t('recite.speechNetwork')
+            : t('recite.speechUnavailable'),
+      )
+    },
+    [t],
+  )
 
   const begin = useCallback(async () => {
     setLive(null)
     setSilent(false)
     setError(null)
+    heardText.current = ''
+
+    if (engine === 'browser') {
+      const session = startBrowserSpeech({
+        lang: lang ?? 'ar',
+        onText: (text) => {
+          heardText.current = text
+          grade(text)
+        },
+        onFailure: onSpeechFailure,
+      })
+      if (!session) {
+        onSpeechFailure('unavailable')
+        return
+      }
+      speech.current = session
+      setPhase('listening')
+      return
+    }
+
     await recorder.start()
-  }, [recorder])
+    setPhase('listening')
+  }, [engine, grade, lang, onSpeechFailure, recorder])
 
   const finish = useCallback(async () => {
+    if (engine === 'browser') {
+      speech.current?.stop()
+      speech.current = null
+      if (!heardText.current.trim()) {
+        setSilent(true)
+        setLive(null)
+        setPhase('idle')
+        return
+      }
+      grade(heardText.current)
+      setPhase('result')
+      return
+    }
+
     const samples = await recorder.stop()
     if (!samples || !recorder.heardSound()) {
       setSilent(true)
       setLive(null)
-      setPhase('ready')
+      setPhase('idle')
       return
     }
     setPhase('thinking')
     try {
-      const result = await read(samples)
-      setLive(result)
+      grade(await transcribe(samples))
       setPhase('result')
     } catch {
-      setError(t('recite.failed'))
-      setPhase('ready')
+      setError(t('recite.modelStopped'))
+      setPhase('idle')
     }
-  }, [read, recorder, t])
+  }, [engine, grade, recorder, t])
 
   const retry = useCallback(() => {
     setLive(null)
     setSilent(false)
     setError(null)
-    setPhase('ready')
+    heardText.current = ''
+    setPhase('idle')
   }, [])
 
   const accept = useCallback(() => {
@@ -161,7 +245,13 @@ export function useRecitation({
     live ? live.expectedWords.map((_, i) => i).filter((i) => !live.missing.includes(i)) : [],
   )
 
+  const listening = phase === 'listening'
+
   return {
+    engine,
+    setEngine,
+    canSwitchEngine: browserSpeechAvailable(),
+    modelReady,
     phase,
     progress,
     error,
@@ -169,11 +259,11 @@ export function useRecitation({
     silent,
     heard,
     call: live ? verdict(live) : null,
-    recording: recorder.state === 'recording',
+    listening,
     starting: recorder.state === 'requesting',
-    denied: recorder.state === 'denied',
-    unsupported: recorder.state === 'unsupported',
-    level: recorder.level,
+    unsupported: engine === 'ondevice' && recorder.state === 'unsupported',
+    /** Only the on-device path records, so only it has a level to show. */
+    level: engine === 'ondevice' ? recorder.level : null,
     seconds: recorder.seconds,
     expectedWords,
     fetchModel,
@@ -188,7 +278,7 @@ export type Recitation = ReturnType<typeof useRecitation>
 
 /**
  * The middle of the screen while reciting: the line as blanks, what was heard
- * underneath it, and a microphone that visibly reacts to your voice.
+ * underneath it, and something that visibly reacts while it is listening.
  */
 export function ReciteStage({
   state,
@@ -204,9 +294,6 @@ export function ReciteStage({
   const t = useT()
 
   if (state.unsupported) return <p className="text-small text-ink-soft">{t('recite.noMic')}</p>
-
-  if (state.phase === 'checking_cache')
-    return <p className="text-small text-ink-soft">{t('common.loading')}</p>
 
   if (state.phase === 'need_model' || state.phase === 'loading')
     return (
@@ -243,10 +330,10 @@ export function ReciteStage({
         {...(state.live?.heard ? { dir, lang } : {})}
         className="mt-6 min-h-[1.5em] border-t border-rule pt-4 text-small text-ink-soft"
       >
-        {state.live?.heard || (state.recording ? t('recite.speakNow') : t('recite.tapHint'))}
+        {state.live?.heard || (state.listening ? t('recite.speakNow') : t('recite.tapHint'))}
       </p>
 
-      {state.recording && <MicMeter level={state.level} seconds={state.seconds} />}
+      {state.listening && <Listening level={state.level} seconds={state.seconds} />}
 
       {state.phase === 'thinking' && (
         <p className="mt-4 text-small text-ink-soft" aria-live="polite">
@@ -286,11 +373,20 @@ export function ReciteControls({
           <button type="button" className="btn-primary w-full py-3" onClick={state.fetchModel}>
             {t('recite.download')}
           </button>
-          <div className="mt-1 text-center">{back}</div>
+          {state.canSwitchEngine && (
+            <button
+              type="button"
+              className="btn-text mt-1 w-full text-micro"
+              onClick={() => state.setEngine('browser')}
+            >
+              {t('recite.useBrowserInstead')}
+            </button>
+          )}
+          <div className="text-center">{back}</div>
         </>
       )}
 
-      {state.phase === 'ready' && !state.recording && (
+      {state.phase === 'idle' && (
         <>
           {state.silent && (
             <p className="mb-2 text-center text-small text-correction">{t('recite.silence')}</p>
@@ -303,11 +399,12 @@ export function ReciteControls({
           >
             🎤 {t('recite.tapToStart')}
           </button>
-          <div className="mt-1 text-center">{back}</div>
+          <EngineNote state={state} />
+          <div className="text-center">{back}</div>
         </>
       )}
 
-      {state.recording && (
+      {state.listening && (
         <button type="button" className="btn-primary w-full py-3" onClick={state.finish}>
           {t('recite.stop')}
         </button>
@@ -324,9 +421,53 @@ export function ReciteControls({
         </div>
       )}
 
-      {state.denied && <p className="mt-2 text-small text-correction">{t('recite.denied')}</p>}
       {state.error && <p className="mt-2 text-small text-correction">{state.error}</p>}
     </div>
+  )
+}
+
+/**
+ * Where the audio goes, said plainly, next to the button that sends it.
+ *
+ * The browser's recogniser is the one that works on a phone, and on some
+ * browsers it forwards the audio to the vendor. That is a real difference from
+ * everything else this app does, so it is stated rather than buried — with the
+ * private alternative one tap away.
+ */
+function EngineNote({ state }: { state: Recitation }) {
+  const t = useT()
+  if (state.engine === 'ondevice')
+    return (
+      <p className="mt-2 text-center text-micro text-ink-soft">
+        {t('recite.onDeviceNote')}
+        {state.canSwitchEngine && (
+          <>
+            {' · '}
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => state.setEngine('browser')}
+            >
+              {t('recite.useBrowser')}
+            </button>
+          </>
+        )}
+      </p>
+    )
+
+  return (
+    <p className="mt-2 text-center text-micro text-ink-soft">
+      {t('recite.browserNote')}{' '}
+      <button
+        type="button"
+        className="underline underline-offset-2"
+        onClick={() => state.setEngine('ondevice')}
+      >
+        {state.modelReady
+          ? t('recite.useOnDevice')
+          : t('recite.useOnDeviceDownload', { mb: ASR_MODEL_MB })}
+      </button>
+    </p>
   )
 }
 
@@ -367,20 +508,24 @@ function BlankLine({
   )
 }
 
-/** A ring that grows with your voice, so it is obvious the mic is alive. */
-function MicMeter({ level, seconds }: { level: number; seconds: number }) {
+/**
+ * Proof that it is listening. The on-device path has the samples, so the ring
+ * follows your voice; the browser path never sees them, so it breathes on its
+ * own — either way a microphone doing nothing looks like nothing.
+ */
+function Listening({ level, seconds }: { level: number | null; seconds: number }) {
   const t = useT()
   return (
     <div className="mt-6 flex items-center gap-3">
       <span
-        className="recite-mic"
-        style={{ ['--recite-level' as string]: level.toFixed(3) }}
+        className={`recite-mic${level == null ? ' is-idle' : ''}`}
+        style={level == null ? undefined : { ['--recite-level' as string]: level.toFixed(3) }}
         aria-hidden
       >
         🎤
       </span>
       <span className="text-micro tabular-nums text-ink-soft">
-        {t('recite.listening', { seconds })}
+        {level == null ? t('recite.listeningNow') : t('recite.listening', { seconds })}
       </span>
     </div>
   )
