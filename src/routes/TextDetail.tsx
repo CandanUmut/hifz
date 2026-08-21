@@ -434,7 +434,7 @@ function Ayah({
         </label>
         {planned && <span className="text-micro text-verified">✓</span>}
         <span className="ms-auto flex items-center gap-1">
-          {segment.audio && audio.available && (
+          {audio.available && (
             <button
               type="button"
               className="btn-text"

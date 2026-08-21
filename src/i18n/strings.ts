@@ -117,7 +117,8 @@ export const STRINGS = {
   'text.selected': { en: '{count} selected', tr: '{count} seçildi' },
   'text.words': { en: 'Word by word', tr: 'Kelime kelime' },
   'text.play': { en: 'Listen', tr: 'Dinle' },
-  'text.playAll': { en: 'Listen to the whole surah', tr: 'Sureyi baştan sona dinle' },
+  // Not every text is a surah — one you typed in yourself is not.
+  'text.playAll': { en: 'Listen to the whole thing', tr: 'Baştan sona dinle' },
   'text.playFromHere': { en: 'Listen from here on', tr: 'Buradan itibaren dinle' },
   'text.audioError': {
     en: 'The recitation could not be played. Check your connection.',
@@ -280,6 +281,46 @@ export const STRINGS = {
   },
   'recite.failed': { en: 'That recording could not be read.', tr: 'Bu kayıt okunamadı.' },
   'recite.downloadFailed': { en: 'The model could not be downloaded.', tr: 'Model indirilemedi.' },
+  'recite.tapToStart': { en: 'Tap and recite', tr: 'Dokun ve oku' },
+  'recite.tapHint': {
+    en: 'Words appear as they are heard. Nothing is shown before you say it.',
+    tr: 'Kelimeler sen söyledikçe çıkar. Söylemeden hiçbir şey görünmez.',
+  },
+  'recite.speakNow': { en: 'Go ahead — I’m listening.', tr: 'Başla, dinliyorum.' },
+  'recite.great': { en: 'That’s it!', tr: 'Aferin, oldu!' },
+  'recite.almost': { en: 'Nearly there.', tr: 'Az kaldı.' },
+  'recite.notCaught': { en: 'I couldn’t make that out.', tr: 'Bunu çıkaramadım.' },
+  'recite.matched': { en: '{done} of {total} words heard', tr: '{total} kelimenin {done} tanesi duyuldu' },
+  'recite.continue': { en: 'Continue', tr: 'Devam et' },
+  'recite.silence': {
+    en: 'The microphone picked up nothing. Hold the phone closer and try again.',
+    tr: 'Mikrofon hiç ses almadı. Telefonu biraz yaklaştırıp tekrar dene.',
+  },
+  'recite.ratherSelfCheck': { en: 'Check it myself instead', tr: 'Kendim kontrol edeyim' },
+
+  'review.praise1': { en: 'Well done.', tr: 'Eline sağlık.' },
+  'review.praise2': { en: 'That is a sitting finished.', tr: 'Bir oturuşu tamamladın.' },
+  'review.praise3': { en: 'Kept, one more day.', tr: 'Bir gün daha korudun.' },
+  'review.praise4': { en: 'Steady work.', tr: 'İstikrarlı gidiyorsun.' },
+
+  'memorize.donePraise': { en: 'You learned it.', tr: 'Ezberledin.' },
+  'memorize.reviewNow': { en: 'Review it now', tr: 'Şimdi tekrar et' },
+
+  // --- rhythm --------------------------------------------------------------
+  'rhythm.todayDone': { en: '{count} done today. Good.', tr: 'Bugün {count} tane yaptın. Güzel.' },
+  'rhythm.todayNone': { en: 'Nothing reviewed yet today.', tr: 'Bugün henüz tekrar yapmadın.' },
+  'rhythm.kept': { en: '{count} lines kept', tr: 'Koruduğun {count} satır' },
+  'rhythm.window': {
+    en: 'You sat down on {days} of the last {total} days.',
+    tr: 'Son {total} günün {days} gününde oturdun.',
+  },
+  'rhythm.windowEmpty': { en: 'Today can be the first.', tr: 'İlk gün bugün olabilir.' },
+
+  // --- playback ------------------------------------------------------------
+  'audio.browserVoice': {
+    en: 'Read by your device’s voice — there is no recording for this text.',
+    tr: 'Cihazının sesiyle okunuyor — bu metnin kaydı yok.',
+  },
 
   // --- status --------------------------------------------------------------
   'intent.learning': { en: 'Learning', tr: 'Ezberliyorum' },

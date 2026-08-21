@@ -10,6 +10,8 @@ import {
   summarise,
 } from '@/db/repo'
 import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
+import { Rhythm } from '@/components/Rhythm'
+import { recentRhythm } from '@/db/rhythm'
 import { useSettings } from '@/state/settings'
 import { useT } from '@/i18n'
 
@@ -18,13 +20,14 @@ export default function Today() {
   const t = useT()
 
   const data = useLiveQuery(async () => {
-    const [queue, cold, seconds, texts, items, waiting] = await Promise.all([
+    const [queue, cold, seconds, texts, items, waiting, rhythm] = await Promise.all([
       buildQueue({ dailyNewCap }),
       coldCheckCandidates(),
       estimateSecondsPerItem(),
       db.texts.toArray(),
       db.items.toArray(),
       studyItems(),
+      recentRhythm(),
     ])
 
     // The study list, grouped so "continue where you left off" has somewhere
@@ -58,12 +61,12 @@ export default function Today() {
     }
     learning.sort((a, b) => b.dueNow - a.dueNow)
 
-    return { queue, cold, seconds, learning, study, hasAnything: items.length > 0 }
+    return { queue, cold, seconds, learning, study, rhythm, hasAnything: items.length > 0 }
   }, [dailyNewCap])
 
   if (!data) return <p className="text-small text-ink-soft">{t('common.loading')}</p>
 
-  const { queue, cold, seconds, learning, study, hasAnything } = data
+  const { queue, cold, seconds, learning, study, rhythm, hasAnything } = data
   const studyCount = study.reduce((n, e) => n + e.indices.length, 0)
   const minutes = Math.max(1, Math.round((queue.length * seconds) / 60))
 
@@ -86,6 +89,8 @@ export default function Today() {
 
   return (
     <section>
+      <Rhythm data={rhythm} />
+
       {/* Two lists, side by side, neither one pushed on the reader. */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="card p-4">

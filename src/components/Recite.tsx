@@ -1,47 +1,56 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { asrCached, ASR_MODEL_MB, decodeToSamples, loadAsr, transcribe } from '@/lib/asr'
-import { checkRecitation, suggestedRating, type RecitationCheck } from '@/engine/recitation'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { asrCached, loadAsr, transcribe } from '@/lib/asr'
+import { ASR_MODEL_MB } from '@/lib/asr-model'
+import {
+  checkRecitation,
+  suggestedRating,
+  verdict,
+  type RecitationCheck,
+  type Verdict,
+} from '@/engine/recitation'
 import { useT } from '@/i18n'
 import { useRecorder } from '@/lib/useRecorder'
 import type { GradeRating } from '@/engine/scheduler'
 
-type Phase = 'checking_cache' | 'need_model' | 'loading' | 'ready' | 'thinking' | 'done'
+export type RecitePhase = 'checking_cache' | 'need_model' | 'loading' | 'ready' | 'thinking' | 'result'
 
 /** How often the running transcript catches up while you are still speaking. */
-const INTERIM_MS = 1800
+const INTERIM_MS = 1200
+/** Less than this and there is not enough voice to read yet (~0.7 s). */
+const MIN_SAMPLES = 11_000
 
 /**
- * Recite out loud and watch the words light up as they are heard.
+ * Reciting out loud, and watching the line fill in.
  *
- * Showing nothing until the very end was the problem: you could not tell
- * whether the microphone was working, whether it had understood you, or why it
- * disagreed. Now the expected words fill in as they are recognised and the raw
- * transcript runs underneath, so the check is something you can watch rather
- * than a verdict handed down at the end.
+ * The old panel printed the whole ayah in grey and lit up the words it
+ * recognised — which meant the answer was on screen the entire time you were
+ * meant to be reciting it from memory. Nothing was being tested.
+ *
+ * Now every word starts as a blank the exact width of the word it hides, and a
+ * word only appears once it has been heard. The line is a record of what you
+ * said, not a crib of what you were supposed to say.
+ *
+ * It comes in two pieces because it belongs in two places: the line and the
+ * microphone go where the reader is looking, in the middle of the screen, and
+ * only the buttons go in the footer. Squeezing all of it into the footer put
+ * the thing being tested below the thing testing it, under an empty card.
  */
-export function Recite({
+export function useRecitation({
   expectedWords,
-  dir = 'rtl',
-  lang,
-  passageClassName,
   onChecked,
-  onCancel,
 }: {
   expectedWords: string[]
-  dir?: 'rtl' | 'ltr'
-  lang?: string
-  passageClassName: string
   onChecked: (check: RecitationCheck, suggested: GradeRating) => void
-  onCancel?: () => void
 }) {
   const recorder = useRecorder()
   const t = useT()
-  const [phase, setPhase] = useState<Phase>('checking_cache')
+  const [phase, setPhase] = useState<RecitePhase>('checking_cache')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState<RecitationCheck | null>(null)
+  const [silent, setSilent] = useState(false)
   const busy = useRef(false)
-  const timer = useRef<number | null>(null)
+  const pollRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
     let cancelled = false
@@ -67,165 +76,341 @@ export function Recite({
     }
   }, [t])
 
-  const transcribeSnapshot = useCallback(
-    async (blob: Blob) => {
-      const samples = await decodeToSamples(blob)
-      const heard = await transcribe(samples)
-      return checkRecitation(heard, expectedWords)
-    },
+  const read = useCallback(
+    async (samples: Float32Array) => checkRecitation(await transcribe(samples), expectedWords),
     [expectedWords],
   )
 
   /* Whisper is not a streaming model, so the running transcript is the whole
-     recording so far, re-read every couple of seconds. It trails your voice by
-     a second or two rather than keeping up with it word by word. */
+     recording so far, re-read as often as the device can manage. It trails
+     your voice rather than keeping up with it word by word — but it is honest
+     about what it has actually heard, which is what makes the blanks mean
+     something. */
   const pollInterim = useCallback(async () => {
     if (busy.current) return
-    const blob = recorder.snapshot()
-    if (!blob || blob.size < 2000) return
+    const samples = recorder.snapshot()
+    if (!samples || samples.length < MIN_SAMPLES) return
     busy.current = true
     try {
-      setLive(await transcribeSnapshot(blob))
+      setLive(await read(samples))
     } catch {
-      /* a partial chunk may not decode yet; the next tick will */
+      /* the next tick will try again */
     } finally {
       busy.current = false
     }
-  }, [recorder, transcribeSnapshot])
+  }, [read, recorder])
+
+  /*
+   * The interval is armed once per recording, and reaches for the newest poll
+   * through a ref.
+   *
+   * Depending on `pollInterim` directly looked right and did nothing at all:
+   * the level meter re-renders about twelve times a second, every render made
+   * a new poll, and the effect tore the interval down and started it again
+   * before it had ever run. Which is why the line stayed blank while you were
+   * speaking and only filled in at the end.
+   */
+  useEffect(() => {
+    pollRef.current = pollInterim
+  }, [pollInterim])
 
   useEffect(() => {
-    if (recorder.state !== 'recording') {
-      if (timer.current) window.clearInterval(timer.current)
-      timer.current = null
-      return
-    }
-    timer.current = window.setInterval(() => void pollInterim(), INTERIM_MS)
-    return () => {
-      if (timer.current) window.clearInterval(timer.current)
-      timer.current = null
-    }
-  }, [pollInterim, recorder.state])
+    if (recorder.state !== 'recording') return
+    const id = window.setInterval(() => void pollRef.current(), INTERIM_MS)
+    return () => window.clearInterval(id)
+  }, [recorder.state])
 
   const begin = useCallback(async () => {
     setLive(null)
+    setSilent(false)
     setError(null)
     await recorder.start()
   }, [recorder])
 
   const finish = useCallback(async () => {
-    const blob = await recorder.stop()
-    if (!blob) return
+    const samples = await recorder.stop()
+    if (!samples || !recorder.heardSound()) {
+      setSilent(true)
+      setLive(null)
+      setPhase('ready')
+      return
+    }
     setPhase('thinking')
     try {
-      const result = await transcribeSnapshot(blob)
+      const result = await read(samples)
       setLive(result)
-      setPhase('done')
-      onChecked(result, suggestedRating(result))
+      setPhase('result')
     } catch {
       setError(t('recite.failed'))
       setPhase('ready')
     }
-  }, [onChecked, recorder, t, transcribeSnapshot])
+  }, [read, recorder, t])
 
-  const back = onCancel && (
-    <button type="button" className="btn-text px-0 text-micro" onClick={onCancel}>
-      ← {t('review.show')}
-    </button>
-  )
+  const retry = useCallback(() => {
+    setLive(null)
+    setSilent(false)
+    setError(null)
+    setPhase('ready')
+  }, [])
 
-  if (recorder.state === 'unsupported') {
-    return (
-      <div>
-        <p className="text-small text-ink-soft">{t('recite.noMic')}</p>
-        <div className="mt-2">{back}</div>
-      </div>
-    )
-  }
+  const accept = useCallback(() => {
+    if (live) onChecked(live, suggestedRating(live))
+  }, [live, onChecked])
 
-  const heardSet = new Set(
+  const heard = new Set(
     live ? live.expectedWords.map((_, i) => i).filter((i) => !live.missing.includes(i)) : [],
   )
 
+  return {
+    phase,
+    progress,
+    error,
+    live,
+    silent,
+    heard,
+    call: live ? verdict(live) : null,
+    recording: recorder.state === 'recording',
+    starting: recorder.state === 'requesting',
+    denied: recorder.state === 'denied',
+    unsupported: recorder.state === 'unsupported',
+    level: recorder.level,
+    seconds: recorder.seconds,
+    expectedWords,
+    fetchModel,
+    begin,
+    finish,
+    retry,
+    accept,
+  }
+}
+
+export type Recitation = ReturnType<typeof useRecitation>
+
+/**
+ * The middle of the screen while reciting: the line as blanks, what was heard
+ * underneath it, and a microphone that visibly reacts to your voice.
+ */
+export function ReciteStage({
+  state,
+  dir = 'rtl',
+  lang,
+  passageClassName,
+}: {
+  state: Recitation
+  dir?: 'rtl' | 'ltr'
+  lang?: string
+  passageClassName: string
+}) {
+  const t = useT()
+
+  if (state.unsupported) return <p className="text-small text-ink-soft">{t('recite.noMic')}</p>
+
+  if (state.phase === 'checking_cache')
+    return <p className="text-small text-ink-soft">{t('common.loading')}</p>
+
+  if (state.phase === 'need_model' || state.phase === 'loading')
+    return (
+      <div>
+        <p className="text-small text-ink-soft">{t('recite.needModel', { mb: ASR_MODEL_MB })}</p>
+        {state.phase === 'loading' && (
+          <>
+            <p className="mt-4 text-small">{t('recite.downloading', { percent: state.progress })}</p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-rule">
+              <div
+                className="h-full rounded-full bg-verified transition-[width]"
+                style={{ width: `${state.progress}%` }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    )
+
   return (
     <div>
-      {phase === 'checking_cache' && <p className="text-small text-ink-soft">{t('common.loading')}</p>}
+      <BlankLine
+        words={state.expectedWords}
+        heard={state.heard}
+        reveal={state.phase === 'result' && state.call === 'accepted'}
+        dir={dir}
+        lang={lang}
+        className={passageClassName}
+      />
 
-      {phase === 'need_model' && (
-        <div>
-          <p className="text-small text-ink-soft">{t('recite.needModel', { mb: ASR_MODEL_MB })}</p>
-          <button type="button" className="btn-primary mt-3 w-full py-3" onClick={fetchModel}>
+      {/* What it heard, in the reader's own words. Only ever tagged as the
+          passage's language when there is actually a transcript in it. */}
+      <p
+        {...(state.live?.heard ? { dir, lang } : {})}
+        className="mt-6 min-h-[1.5em] border-t border-rule pt-4 text-small text-ink-soft"
+      >
+        {state.live?.heard || (state.recording ? t('recite.speakNow') : t('recite.tapHint'))}
+      </p>
+
+      {state.recording && <MicMeter level={state.level} seconds={state.seconds} />}
+
+      {state.phase === 'thinking' && (
+        <p className="mt-4 text-small text-ink-soft" aria-live="polite">
+          {t('recite.thinking')}
+        </p>
+      )}
+
+      {state.phase === 'result' && state.call && state.live && (
+        <Verdict call={state.call} check={state.live} />
+      )}
+    </div>
+  )
+}
+
+/** The buttons, and nothing else, so the footer stays a footer. */
+export function ReciteControls({
+  state,
+  onCancel,
+}: {
+  state: Recitation
+  onCancel?: () => void
+}) {
+  const t = useT()
+
+  const back = onCancel && (
+    <button type="button" className="btn-text px-0 text-micro" onClick={onCancel}>
+      {t('recite.ratherSelfCheck')}
+    </button>
+  )
+
+  if (state.unsupported) return <div className="text-center">{back}</div>
+
+  return (
+    <div>
+      {state.phase === 'need_model' && (
+        <>
+          <button type="button" className="btn-primary w-full py-3" onClick={state.fetchModel}>
             {t('recite.download')}
           </button>
           <div className="mt-1 text-center">{back}</div>
+        </>
+      )}
+
+      {state.phase === 'ready' && !state.recording && (
+        <>
+          {state.silent && (
+            <p className="mb-2 text-center text-small text-correction">{t('recite.silence')}</p>
+          )}
+          <button
+            type="button"
+            className="btn-primary w-full py-3"
+            onClick={state.begin}
+            disabled={state.starting}
+          >
+            🎤 {t('recite.tapToStart')}
+          </button>
+          <div className="mt-1 text-center">{back}</div>
+        </>
+      )}
+
+      {state.recording && (
+        <button type="button" className="btn-primary w-full py-3" onClick={state.finish}>
+          {t('recite.stop')}
+        </button>
+      )}
+
+      {state.phase === 'result' && (
+        <div className="flex gap-2">
+          <button type="button" className="btn-secondary flex-1 py-3" onClick={state.retry}>
+            {t('recite.tryAgain')}
+          </button>
+          <button type="button" className="btn-primary flex-1 py-3" onClick={state.accept}>
+            {t('recite.continue')}
+          </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div>
-          <p className="text-small text-ink-soft">{t('recite.downloading', { percent: progress })}</p>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-rule">
-            <div
-              className="h-full rounded-full bg-verified transition-[width]"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-      )}
+      {state.denied && <p className="mt-2 text-small text-correction">{t('recite.denied')}</p>}
+      {state.error && <p className="mt-2 text-small text-correction">{state.error}</p>}
+    </div>
+  )
+}
 
-      {(phase === 'ready' || phase === 'thinking' || phase === 'done') && (
-        <div>
-          {/* The line, filling in word by word as it is recognised. */}
-          {(live || recorder.state === 'recording') && (
-            <div className="mb-3">
-              <p dir={dir} lang={lang} className={`${passageClassName} leading-relaxed`}>
-                {expectedWords.map((word, i) => (
-                  <span
-                    key={i}
-                    className={
-                      heardSet.has(i)
-                        ? 'text-verified transition-colors'
-                        : 'text-ink-soft/30 transition-colors'
-                    }
-                  >
-                    {word}{' '}
-                  </span>
-                ))}
-              </p>
-              <p dir={dir} lang={lang} className="mt-2 min-h-[1.5em] text-small text-ink-soft">
-                {live?.heard || (recorder.state === 'recording' ? '…' : '')}
-              </p>
-              {live && (
-                <p className="mt-1 text-micro text-ink-soft">
-                  {Math.round(live.score * 100)}%
-                </p>
-              )}
-            </div>
-          )}
+/**
+ * The line as blanks.
+ *
+ * Each blank is the word itself, painted in nothing and covered by a bar the
+ * exact size of the glyphs underneath. It gives away no more than its length,
+ * and because the text is really there the line cannot reflow when a word
+ * arrives — it just stops being hidden.
+ */
+function BlankLine({
+  words,
+  heard,
+  reveal,
+  dir,
+  lang,
+  className,
+}: {
+  words: string[]
+  heard: Set<number>
+  reveal: boolean
+  dir: 'rtl' | 'ltr'
+  lang?: string
+  className: string
+}) {
+  return (
+    <p dir={dir} lang={lang} className={`${className} leading-[2.1]`} aria-live="polite">
+      {words.map((word, i) => (
+        <Fragment key={i}>
+          {i > 0 && ' '}
+          <span className={`recite-word${heard.has(i) ? ' is-heard' : reveal ? ' is-shown' : ''}`}>
+            {word}
+          </span>
+        </Fragment>
+      ))}
+    </p>
+  )
+}
 
-          {phase === 'thinking' ? (
-            <p className="text-small text-ink-soft" aria-live="polite">
-              {t('recite.thinking')}
-            </p>
-          ) : recorder.state === 'recording' ? (
-            <button type="button" className="btn-primary w-full py-3" onClick={finish}>
-              ■ {t('recite.stop')} · {recorder.seconds}s
-            </button>
-          ) : phase === 'done' ? null : (
-            <button type="button" className="btn-primary w-full py-3" onClick={begin}>
-              🎤 {t('recite.start')}
-            </button>
-          )}
+/** A ring that grows with your voice, so it is obvious the mic is alive. */
+function MicMeter({ level, seconds }: { level: number; seconds: number }) {
+  const t = useT()
+  return (
+    <div className="mt-6 flex items-center gap-3">
+      <span
+        className="recite-mic"
+        style={{ ['--recite-level' as string]: level.toFixed(3) }}
+        aria-hidden
+      >
+        🎤
+      </span>
+      <span className="text-micro tabular-nums text-ink-soft">
+        {t('recite.listening', { seconds })}
+      </span>
+    </div>
+  )
+}
 
-          {phase !== 'done' && recorder.state !== 'recording' && (
-            <div className="mt-1 text-center">{back}</div>
-          )}
-          {recorder.state === 'denied' && (
-            <p className="mt-2 text-small text-correction">{t('recite.denied')}</p>
-          )}
-        </div>
-      )}
+function Verdict({ call, check }: { call: Verdict; check: RecitationCheck }) {
+  const t = useT()
+  const tone =
+    call === 'accepted'
+      ? 'border-verified/40 bg-verified/10 text-verified'
+      : call === 'partial'
+        ? 'border-rule text-ink'
+        : 'border-correction/40 bg-correction/10 text-correction'
 
-      {error && <p className="mt-3 text-small text-correction">{error}</p>}
+  return (
+    <div className={`mt-6 rounded-lg border px-4 py-3 ${tone}`} role="status">
+      <p className="text-base font-medium">
+        {call === 'accepted'
+          ? t('recite.great')
+          : call === 'partial'
+            ? t('recite.almost')
+            : t('recite.notCaught')}
+      </p>
+      <p className="mt-1 text-micro opacity-80">
+        {t('recite.matched', {
+          done: check.expectedWords.length - check.missing.length,
+          total: check.expectedWords.length,
+        })}
+      </p>
+      <p className="mt-2 text-micro text-ink-soft">{t('recite.notAJudge')}</p>
     </div>
   )
 }

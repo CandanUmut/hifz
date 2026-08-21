@@ -138,7 +138,8 @@ export async function addToPlan({
 
 /**
  * Moves study items into the review queue. Called when a study drill finishes,
- * and directly when someone says "just put this in my reviews".
+ * and directly when someone says "just put this in my reviews". The moment is
+ * stamped as study, because finishing the study list is finishing study.
  */
 export async function promoteToReview(textId: string, indices?: number[]): Promise<number> {
   const [segments, items] = await Promise.all([getSegments(textId), getItems(textId)])
@@ -151,9 +152,33 @@ export async function promoteToReview(textId: string, indices?: number[]): Promi
     return index != null && wanted.has(index)
   })
   if (moving.length) {
-    await db.items.bulkPut(moving.map((item) => ({ ...item, stage: 'review' as const })))
+    const at = Date.now()
+    await db.items.bulkPut(
+      moving.map((item) => ({ ...item, stage: 'review' as const, studiedAt: item.studiedAt ?? at })),
+    )
   }
   return moving.length
+}
+
+/**
+ * Records that these lines were learned now.
+ *
+ * A record of activity that counts only graded reviews would tell someone who
+ * spent an evening memorising a surah that they had done nothing that day —
+ * and the first review of a passage is always the day after the drill, so the
+ * evening they worked hardest would be the emptiest day on the strip.
+ */
+export async function markStudied(textId: string, indices: number[], at = Date.now()) {
+  const [segments, items] = await Promise.all([getSegments(textId), getItems(textId)])
+  const indexById = new Map(segments.map((s) => [s.id, s.index]))
+  const wanted = new Set(indices)
+  const touched = items.filter((item) => {
+    const index = indexById.get(item.segmentId)
+    return index != null && wanted.has(index)
+  })
+  if (touched.length) {
+    await db.items.bulkPut(touched.map((item) => ({ ...item, studiedAt: item.studiedAt ?? at })))
+  }
 }
 
 /** Everything waiting to be studied, oldest first. */

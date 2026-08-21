@@ -9,7 +9,7 @@ import {
   similarity,
   type SegmentLike,
 } from '../similarity'
-import { checkRecitation, suggestedRating } from '../recitation'
+import { checkRecitation, suggestedRating, verdict } from '../recitation'
 
 const seg = (id: string, content: string, index = 0): SegmentLike => ({
   id,
@@ -168,10 +168,31 @@ describe('recitation check', () => {
     expect(check.score).toBe(1)
   })
 
-  it('names the word that was skipped', () => {
+  it('names the word that was skipped without failing the line for it', () => {
     const check = checkRecitation('قل هو احد', ayah)
     expect(check.missing).toEqual([2])
-    expect(suggestedRating(check)).toBe(1)
+    // Three words of four is a recitation, not a lapse. The reader still
+    // grades; the check only says whether it heard one.
+    expect(verdict(check)).toBe('accepted')
+    expect(suggestedRating(check)).toBe(2)
+  })
+
+  it('accepts a line when only part of it was caught', () => {
+    // A long breath the model half-hears is the ordinary case on a phone.
+    const check = checkRecitation('قُلْ هُوَ', ayah)
+    expect(verdict(check)).toBe('accepted')
+  })
+
+  it('rejects a line that was not recited at all', () => {
+    expect(verdict(checkRecitation('', ayah))).toBe('missed')
+    expect(verdict(checkRecitation('الحمد لله رب العالمين', ayah))).toBe('missed')
+  })
+
+  it('survives a transcript that split or glued the words differently', () => {
+    // No spaces at all: word alignment finds nothing, letters find everything.
+    const check = checkRecitation('قلهواللهاحد', ayah)
+    expect(check.letterScore).toBeGreaterThan(0.9)
+    expect(verdict(check)).toBe('accepted')
   })
 
   it('never suggests Easy — recognition mishears, and a grade is the reader’s', () => {

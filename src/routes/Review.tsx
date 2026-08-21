@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { InkText } from '@/components/InkText'
 import { GradeButtons } from '@/components/GradeButtons'
-import { Recite } from '@/components/Recite'
+import { ReciteControls, ReciteStage, useRecitation } from '@/components/Recite'
+import { Rhythm } from '@/components/Rhythm'
+import { verdict } from '@/engine/recitation'
 import { SessionMarks } from '@/components/SessionMarks'
 import { SimilarPassages } from '@/components/SimilarPassages'
 import { Transliteration } from '@/components/Transliteration'
 import { db } from '@/db/db'
+import { recentRhythm } from '@/db/rhythm'
 import {
   buildQueue,
   coldCheckCandidates,
@@ -20,7 +24,7 @@ import type { GradeRating } from '@/engine/scheduler'
 import { useT } from '@/i18n'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { segmentWords, words as splitWords } from '@/lib/text'
-import { passageClass, passageClassSmall } from '@/lib/typography'
+import { passageClass } from '@/lib/typography'
 import { useAudio } from '@/lib/useAudio'
 import { useInterference } from '@/lib/useInterference'
 import { useSettings } from '@/state/settings'
@@ -163,6 +167,26 @@ function Room({ kind }: { kind: SessionKind }) {
     [answerSegment, entry, settings],
   )
 
+  const expectedWords = useMemo(
+    () => (answerSegment ? segmentWords(answerSegment) : []),
+    [answerSegment],
+  )
+  const recitation = useRecitation({
+    expectedWords,
+    onChecked: (check) =>
+      /*
+       * An accepted recitation is accepted. Listing the words the model
+       * happened to miss under a green result would be the app arguing with
+       * its own verdict.
+       */
+      markChecked(
+        verdict(check) === 'accepted'
+          ? []
+          : check.missing.map((wordIndex) => ({ wordIndex, kind: 'missing' })),
+        check.heard,
+      ),
+  })
+
   // Looking is allowed, and it lowers the ceiling. A cold check allows nothing.
   const peekable = kind !== 'cold'
   const capped = draft.peeks > 0 || draft.errors.length > 0
@@ -219,6 +243,7 @@ function Room({ kind }: { kind: SessionKind }) {
       ? `${segment.ref ?? segment.index + 1} → ${nextSegment?.ref ?? ''}`
       : (segment.ref ?? String(segment.index + 1))
   const showAnswer = phase === 'answer'
+  const reciting = mode === 'recite_asr' && !showAnswer && item.type !== 'meaning'
 
   return (
     <div className="min-h-dvh">
@@ -248,7 +273,7 @@ function Room({ kind }: { kind: SessionKind }) {
       <div className="mx-auto flex min-h-[calc(100dvh-4.25rem)] max-w-column flex-col justify-center px-5 pb-48 pt-6">
         {/* One framed area holds whatever is being asked, so the screen has a
             subject instead of text floating in the middle of nothing. */}
-        <div className="card flex min-h-[38vh] flex-col justify-center px-5 py-6">
+        <div className="card flex min-h-[44vh] flex-col justify-center px-5 py-6">
           <>
             {/* Context for a join: the tail of the line before it. */}
             {item.type === 'link' && (
@@ -286,6 +311,15 @@ function Room({ kind }: { kind: SessionKind }) {
               ) : (
                 <p className="text-small text-ink-soft">{t('review.recallPrompt')}</p>
               )
+            ) : reciting ? (
+              /* Reciting takes the middle of the screen. The line being tested
+                 belongs where the reader is looking, not in the footer. */
+              <ReciteStage
+                state={recitation}
+                dir={text.dir}
+                lang={text.lang}
+                passageClassName={passageClass(text)}
+              />
             ) : (
               <>
                 <InkText
@@ -315,7 +349,7 @@ function Room({ kind }: { kind: SessionKind }) {
                 {meaning.tr && item.type !== 'meaning' && (
                   <p className="meaning mt-3">{meaning.tr.text}</p>
                 )}
-                {audio.available && answerSegment.audio && (
+                {audio.available && (
                   <button
                     type="button"
                     className="btn-text mt-4 self-start px-0"
@@ -362,20 +396,8 @@ function Room({ kind }: { kind: SessionKind }) {
                   {capped ? t('review.easyOffAfterPeek') : t('review.gradeHint')}
                 </p>
               </>
-            ) : mode === 'recite_asr' && item.type !== 'meaning' ? (
-              <Recite
-                expectedWords={segmentWords(answerSegment)}
-                dir={text.dir}
-                lang={text.lang}
-                passageClassName={passageClassSmall(text)}
-                onChecked={(check) =>
-                  markChecked(
-                    check.missing.map((wordIndex) => ({ wordIndex, kind: 'missing' })),
-                    check.heard,
-                  )
-                }
-                onCancel={() => setMode('self_grade')}
-              />
+            ) : reciting ? (
+              <ReciteControls state={recitation} onCancel={() => setMode('self_grade')} />
             ) : (
               <>
                 <button type="button" className="btn-primary w-full py-3" onClick={reveal}>
@@ -409,12 +431,16 @@ function Room({ kind }: { kind: SessionKind }) {
   )
 }
 
+/** A different word each time, so finishing does not read like a receipt. */
+const PRAISE = ['review.praise1', 'review.praise2', 'review.praise3', 'review.praise4'] as const
+
 function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void }) {
   const { marks, passedFirstTime, entries, reset } = useSession()
   const t = useT()
   const total = marks.length
   const missed = marks.filter((m) => m === 'missed').length
   const saved = useRef(false)
+  const rhythm = useLiveQuery(() => recentRhythm(), [])
 
   useEffect(() => {
     if (kind !== 'cold' || saved.current || !total) return
@@ -441,11 +467,18 @@ function SessionDone({ kind, onLeave }: { kind: SessionKind; onLeave: () => void
         </>
       ) : (
         <>
-          <p className="text-display">{t('review.doneTitle', { count: total })}</p>
+          <p className="text-base text-verified">{t(PRAISE[total % PRAISE.length])}</p>
+          <p className="mt-2 text-display">{t('review.doneTitle', { count: total })}</p>
           <p className="mt-3 text-small text-ink-soft">
             {missed === 0 ? t('review.doneNoneMissed') : t('review.doneMissed', { count: missed })}
           </p>
         </>
+      )}
+      {/* What you have been doing, right where you just finished doing it. */}
+      {rhythm && (
+        <div className="mt-8 w-full text-start">
+          <Rhythm data={rhythm} />
+        </div>
       )}
       <button
         type="button"

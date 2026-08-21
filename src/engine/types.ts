@@ -201,6 +201,8 @@ export interface ItemRecord {
   successStreak: number
   /** First graded exposure — used for the daily new-item cap. */
   introducedAt?: number
+  /** When the memorisation drill finished for this line. */
+  studiedAt?: number
   lastSeenAt?: number
   lastEvidence?: EvidenceRef
   createdAt: number

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { segmentWords } from '@/lib/text'
+import { speak, speechAvailable, type SpeakHandle } from '@/lib/tts'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 
 /**
- * Playback, one ayah per file.
+ * Playback, one ayah per file — and a spoken fallback when there is no file.
  *
  * This used to seek into the whole-surah mp3. Seeking an mp3 is approximate —
  * the browser lands on a frame boundary and its idea of the position drifts
@@ -11,12 +13,17 @@ import type { SegmentRecord, TextRecord } from '@/engine/types'
  * packs now carry one small file per ayah, so there is nothing to seek: the
  * file starts where the ayah starts and ends where it ends, and the word
  * timings are measured from the beginning of that same file.
+ *
+ * A text you added yourself has no recording, and Play used to do nothing at
+ * all for it. Those fall through to the browser's own voice.
  */
 export function useAudio(text: TextRecord | undefined, segments?: SegmentRecord[]) {
   const ref = useRef<HTMLAudioElement | null>(null)
   const queue = useRef<SegmentRecord[]>([])
   const current = useRef<SegmentRecord | null>(null)
+  const speech = useRef<SpeakHandle | null>(null)
   const frame = useRef<number | null>(null)
+  const advanceRef = useRef<() => void>(() => {})
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
   const [activeWord, setActiveWord] = useState<number | null>(null)
   const [continuous, setContinuous] = useState(false)
@@ -29,6 +36,8 @@ export function useAudio(text: TextRecord | undefined, segments?: SegmentRecord[
 
   const stop = useCallback(() => {
     clearFrame()
+    speech.current?.cancel()
+    speech.current = null
     const audio = ref.current
     if (audio) {
       audio.pause()
@@ -60,47 +69,69 @@ export function useAudio(text: TextRecord | undefined, segments?: SegmentRecord[
     frame.current = requestAnimationFrame(tick)
   }, [clearFrame])
 
+  /* One element, created once, with the listener that keeps a queue moving
+     attached for its whole life — reattaching it per play was how a second
+     ayah sometimes never started. */
+  const element = useCallback(() => {
+    if (!ref.current) {
+      const audio = new Audio()
+      audio.preload = 'auto'
+      audio.addEventListener('ended', () => advanceRef.current())
+      ref.current = audio
+    }
+    return ref.current
+  }, [])
+
   const playOne = useCallback(
     async (segment: SegmentRecord) => {
-      const url = segment.audio?.url
-      if (!url) return false
-      let audio = ref.current
-      if (!audio) {
-        audio = new Audio()
-        audio.preload = 'auto'
-        ref.current = audio
-      }
-      audio.src = url
+      speech.current?.cancel()
+      speech.current = null
       current.current = segment
       setPlayingIndex(segment.index)
       setActiveWord(null)
-      try {
-        await audio.play()
-        watch()
-        return true
-      } catch {
+
+      const url = segment.audio?.url
+      if (url) {
+        const audio = element()
+        audio.src = url
+        try {
+          await audio.play()
+          watch()
+          return true
+        } catch {
+          setError(true)
+          return false
+        }
+      }
+
+      // No recording for this line: read it aloud instead.
+      const handle = speak({
+        text: segment.content,
+        lang: text?.lang ?? 'ar',
+        words: segmentWords(segment),
+        onWord: setActiveWord,
+        onEnd: () => advanceRef.current(),
+      })
+      if (!handle) {
         setError(true)
+        setPlayingIndex(null)
         return false
       }
+      speech.current = handle
+      return true
     },
-    [watch],
+    [element, text?.lang, watch],
   )
 
-  // Advancing on `ended` is what makes continuous play work without seeking.
+  // Kept in a ref so the queue can advance from a callback without either the
+  // element listener or the utterance holding a stale copy of it.
   useEffect(() => {
-    const audio = ref.current
-    if (!audio) return
-    const onEnded = () => {
+    advanceRef.current = () => {
       const next = queue.current.shift()
-      if (next) {
-        void playOne(next)
-        return
-      }
-      stop()
+      if (next) void playOne(next)
+      else stop()
     }
-    audio.addEventListener('ended', onEnded)
-    return () => audio.removeEventListener('ended', onEnded)
-  }, [playOne, playingIndex, stop])
+  }, [playOne, stop])
 
   const playSegment = useCallback(
     async (segment: SegmentRecord, repeats = 1) => {
@@ -119,7 +150,7 @@ export function useAudio(text: TextRecord | undefined, segments?: SegmentRecord[
   /** The whole surah, or everything from one ayah onwards. */
   const playFrom = useCallback(
     async (startIndex = 0) => {
-      const list = (segments ?? []).filter((s) => s.index >= startIndex && s.audio?.url)
+      const list = (segments ?? []).filter((s) => s.index >= startIndex)
       if (!list.length) return
       setError(false)
       setContinuous(true)
@@ -137,6 +168,9 @@ export function useAudio(text: TextRecord | undefined, segments?: SegmentRecord[
     activeWord,
     continuous,
     error,
-    available: (segments ?? []).some((s) => !!s.audio?.url) || !!text?.audioUrl,
+    /** Whether this line has a recording, as opposed to being read aloud. */
+    recorded: (segments ?? []).some((s) => !!s.audio?.url) || !!text?.audioUrl,
+    available:
+      (segments ?? []).some((s) => !!s.audio?.url) || !!text?.audioUrl || speechAvailable(),
   }
 }

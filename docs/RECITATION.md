@@ -1,15 +1,25 @@
 # Reciting out loud
 
-The recitation check listens while you recite and shows you what it heard
-against what it expected. It is off until you switch it on in Settings, and it
-is marked experimental because it is.
+The recitation check listens while you recite. The line starts as blanks, and
+a word appears only once it has actually been heard — so the answer is never on
+screen while you are trying to remember it, and you can watch the check happen
+instead of waiting for a verdict. It is offered directly on the review screen;
+tapping it explains the one-time download before anything is fetched.
 
 ## What it does and does not do
 
-**Your voice never leaves the device.** Recognition runs in the browser. The
-recording is decoded, transcribed and dropped; nothing is uploaded, and the
+**Your voice never leaves the device.** Recognition runs in the browser, in a
+worker. The samples are transcribed and dropped; nothing is uploaded, and the
 only thing kept is the transcript, in the local attempt history alongside every
 other attempt.
+
+**The microphone is read as raw samples, not as a recording.** There is no
+MediaRecorder and no container: the audio is taken off the Web Audio graph,
+resampled to 16 kHz and handed to the model as numbers. That is what makes a
+partial read free — the running transcript costs nothing to take — and it is
+what makes it work on iOS Safari, where MediaRecorder produces a fragmented
+MP4 whose fragments cannot be decoded on their own. Recitation checking used to
+fail on every iPhone for exactly that reason.
 
 **It suggests, it does not judge.** Speech recognition mishears — background
 noise, a fast qirāʾah, a phone microphone. The app shows the words it did not
@@ -17,10 +27,20 @@ hear and leaves the grade to you, exactly like every other response mode. An
 attempt checked this way is recorded with method `recite_asr` and labelled
 *Recited*.
 
-**Orthography is forgiven, words are not.** A transcript writes `الله` where
-the mushaf writes `ٱللَّه`, and marking that wrong would be the app being wrong.
-Diacritics, alef variants and the small Uthmani marks are folded away before
-comparing. A missing or substituted *word* is reported.
+**It is forgiving on purpose.** A transcript writes `الله` where the mushaf
+writes `ٱللَّه`, glues a conjunction onto the next word, and drops a short
+particle in a long breath. Diacritics, alef variants and the small Uthmani
+marks are folded away; a word matches if it reads the same, differs by a
+spelling's worth of letters, shares a stem, or is the start of its neighbour.
+On top of that, the two lines are compared a second time as one run of letters,
+so a transcript that split the words differently still lands — only unbroken
+runs of four letters or more count, because Arabic has few enough letters that
+any two lines share a long scattered subsequence.
+
+A line passes when half of it lands. That is deliberate: the check exists to
+tell a recitation from a blank, not to grade tajwīd, and telling someone they
+failed a line they recited correctly is the fastest way to make them stop
+opening the app. The grade is still theirs.
 
 ## The download
 
@@ -56,10 +76,19 @@ binaries. Both default to the public CDNs when unset.
 
 ## What to expect
 
-Measured in Chromium on WASM, one ayah of Al-Ikhlas: model load about 9
-seconds from cache, transcription about 6–7 seconds for a 3-second recitation.
-It is not instant, and it is not meant to be used on every card — it is the
-strongest check the app can make, for when you want one.
+The model runs on WebGPU where the browser has it and falls back to WASM where
+it does not, with the same weights either way, so switching costs no download.
+Threads would help too, but they need cross-origin isolation, and a static host
+cannot set the headers for it.
+
+Measured in Chromium on WASM in a slow container, one ayah of Al-Ikhlas: about
+6 seconds per pass. Whisper pads every clip to thirty seconds, so a short clip
+costs the same as a long one — which is why the running transcript refreshes
+every few seconds rather than word by word. On a GPU it is roughly a second.
+
+The work happens in a worker. On the main thread each pass froze the page for
+those six seconds, which meant the words stopped appearing and the Stop button
+stopped answering, on the one screen where you are mid-sentence and need both.
 
 Accuracy on clean recitation is good. From the run that decided whether to
 build this at all, Al-Ikhlas 112:1–4 came back word for word, differing only in
