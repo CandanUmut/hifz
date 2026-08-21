@@ -125,7 +125,17 @@ export default function Memorize() {
         <p className="mt-2 text-display">{t('memorize.doneTitle', { range: rangeLabel })}</p>
         <p className="mt-3 text-small text-ink-soft">{t('memorize.doneBody')}</p>
         <div className="mt-8 flex w-full flex-col gap-2">
-          <button type="button" className="btn-primary py-3" onClick={() => navigate('/review')}>
+          {/* The natural next step is the ladder over what was just learned,
+              not tomorrow's mixed queue. */}
+          <button
+            type="button"
+            className="btn-primary py-3"
+            onClick={() =>
+              navigate(
+                `/test?text=${encodeURIComponent(textId)}&from=${segments[0].index}&to=${segments[segments.length - 1].index}`,
+              )
+            }
+          >
             {t('memorize.reviewNow')}
           </button>
           <button type="button" className="btn-secondary py-3" onClick={() => navigate('/')}>

@@ -1,0 +1,1127 @@
+{
+  "schema": 1,
+  "id": "quran",
+  "version": "1.3.0",
+  "builtAt": "2026-08-21",
+  "title": "The whole Qur’an",
+  "subtitle": "All 114 surah",
+  "lang": "ar",
+  "dir": "rtl",
+  "license": "Qur’anic text is not under copyright. Each translation and the recitation carry their own terms, listed per source below and in docs/CONTENT-SOURCES.md.",
+  "attribution": {
+    "source": "Quran.com (Quran Foundation)",
+    "sourceUrl": "https://quran.com",
+    "edition": "KFGQPC Uthmanic Hafs",
+    "translator": "see sources.translations"
+  },
+  "sources": {
+    "arabic": {
+      "source": "Quran.com API v4 (Quran Foundation)",
+      "edition": "Uthmani, King Fahd Glorious Qur’an Printing Complex",
+      "sourceUrl": "https://api-docs.quran.foundation",
+      "license": "Qur’anic text is not under copyright."
+    },
+    "translations": [
+      {
+        "id": "elmalili-sadelestirilmis",
+        "lang": "tr",
+        "title": "Elmalılı Hamdi Yazır (sadeleştirilmiş)",
+        "translator": "Elmalılı Muhammed Hamdi Yazır",
+        "sourceUrl": "https://github.com/fawazahmed0/quran-api",
+        "license": "Public domain (translator d. 1942); compiled edition released without restriction.",
+        "source": "quran-api CDN mirror of the Elmalılı (sadeleştirilmiş) edition"
+      },
+      {
+        "id": "diyanet-isleri",
+        "lang": "tr",
+        "title": "Diyanet İşleri Meali",
+        "translator": "Diyanet İşleri Başkanlığı",
+        "sourceUrl": "https://tanzil.net",
+        "license": "Tanzil.net terms — free for non-commercial use with attribution.",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      },
+      {
+        "id": "clear-quran",
+        "lang": "en",
+        "title": "The Clear Quran",
+        "translator": "Dr. Mustafa Khattab",
+        "sourceUrl": "https://quran.com",
+        "license": "Used with permission of the translator for non-commercial distribution.",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      },
+      {
+        "id": "pickthall",
+        "lang": "en",
+        "title": "The Meaning of the Glorious Koran",
+        "translator": "Marmaduke Pickthall",
+        "sourceUrl": "https://tanzil.net",
+        "license": "Public domain (first published 1930).",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)"
+      }
+    ],
+    "transliterations": [
+      {
+        "id": "easy",
+        "title": "Readable",
+        "hint": "Spelled the way it is recited — \"Qul huwal laahu ahad\".",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)",
+        "sourceUrl": "https://quran411.com",
+        "license": "Freely distributed transliteration; no restriction stated."
+      },
+      {
+        "id": "scholarly",
+        "title": "Scholarly",
+        "hint": "Full diacritics — \"Qul Huwa Allāhu ʾAĥadun\".",
+        "source": "quran-api CDN (github.com/fawazahmed0/quran-api)",
+        "sourceUrl": "https://github.com/fawazahmed0/quran-api",
+        "license": "Freely distributed transliteration; no restriction stated."
+      },
+      {
+        "id": "aligned",
+        "title": "Word-aligned",
+        "hint": "One token per Arabic word, so it follows the recitation word by word.",
+        "source": "Derived from the Quran.com API v4 word transliterations",
+        "sourceUrl": "https://api-docs.quran.foundation",
+        "license": "Quran.com API v4 word-by-word transliteration."
+      }
+    ],
+    "wordByWord": {
+      "source": "Quran.com API v4 word-by-word gloss",
+      "sourceUrl": "https://api-docs.quran.foundation"
+    },
+    "audio": {
+      "source": "QuranicAudio, timings from the Quran.com API",
+      "sourceUrl": "https://quranicaudio.com",
+      "reciter": "Mishari Rashid al-Afasy",
+      "style": "Murattal"
+    }
+  },
+  "texts": [
+    {
+      "id": "quran:1",
+      "index": 1,
+      "title": "Al-Fatihah",
+      "titleArabic": "الفاتحة",
+      "titleTr": "Fâtiha",
+      "segmentCount": 7,
+      "file": "001.json"
+    },
+    {
+      "id": "quran:2",
+      "index": 2,
+      "title": "Al-Baqarah",
+      "titleArabic": "البقرة",
+      "titleTr": "Bakara",
+      "segmentCount": 286,
+      "file": "002.json"
+    },
+    {
+      "id": "quran:3",
+      "index": 3,
+      "title": "Ali 'Imran",
+      "titleArabic": "آل عمران",
+      "titleTr": "Âl-i İmrân",
+      "segmentCount": 200,
+      "file": "003.json"
+    },
+    {
+      "id": "quran:4",
+      "index": 4,
+      "title": "An-Nisa",
+      "titleArabic": "النساء",
+      "titleTr": "Nisâ",
+      "segmentCount": 176,
+      "file": "004.json"
+    },
+    {
+      "id": "quran:5",
+      "index": 5,
+      "title": "Al-Ma'idah",
+      "titleArabic": "المائدة",
+      "titleTr": "Mâide",
+      "segmentCount": 120,
+      "file": "005.json"
+    },
+    {
+      "id": "quran:6",
+      "index": 6,
+      "title": "Al-An'am",
+      "titleArabic": "الأنعام",
+      "titleTr": "En'âm",
+      "segmentCount": 165,
+      "file": "006.json"
+    },
+    {
+      "id": "quran:7",
+      "index": 7,
+      "title": "Al-A'raf",
+      "titleArabic": "الأعراف",
+      "titleTr": "A'râf",
+      "segmentCount": 206,
+      "file": "007.json"
+    },
+    {
+      "id": "quran:8",
+      "index": 8,
+      "title": "Al-Anfal",
+      "titleArabic": "الأنفال",
+      "titleTr": "Enfâl",
+      "segmentCount": 75,
+      "file": "008.json"
+    },
+    {
+      "id": "quran:9",
+      "index": 9,
+      "title": "At-Tawbah",
+      "titleArabic": "التوبة",
+      "titleTr": "Tevbe",
+      "segmentCount": 129,
+      "file": "009.json"
+    },
+    {
+      "id": "quran:10",
+      "index": 10,
+      "title": "Yunus",
+      "titleArabic": "يونس",
+      "titleTr": "Yûnus",
+      "segmentCount": 109,
+      "file": "010.json"
+    },
+    {
+      "id": "quran:11",
+      "index": 11,
+      "title": "Hud",
+      "titleArabic": "هود",
+      "titleTr": "Hûd",
+      "segmentCount": 123,
+      "file": "011.json"
+    },
+    {
+      "id": "quran:12",
+      "index": 12,
+      "title": "Yusuf",
+      "titleArabic": "يوسف",
+      "titleTr": "Yûsuf",
+      "segmentCount": 111,
+      "file": "012.json"
+    },
+    {
+      "id": "quran:13",
+      "index": 13,
+      "title": "Ar-Ra'd",
+      "titleArabic": "الرعد",
+      "titleTr": "Ra'd",
+      "segmentCount": 43,
+      "file": "013.json"
+    },
+    {
+      "id": "quran:14",
+      "index": 14,
+      "title": "Ibrahim",
+      "titleArabic": "ابراهيم",
+      "titleTr": "İbrâhîm",
+      "segmentCount": 52,
+      "file": "014.json"
+    },
+    {
+      "id": "quran:15",
+      "index": 15,
+      "title": "Al-Hijr",
+      "titleArabic": "الحجر",
+      "titleTr": "Hicr",
+      "segmentCount": 99,
+      "file": "015.json"
+    },
+    {
+      "id": "quran:16",
+      "index": 16,
+      "title": "An-Nahl",
+      "titleArabic": "النحل",
+      "titleTr": "Nahl",
+      "segmentCount": 128,
+      "file": "016.json"
+    },
+    {
+      "id": "quran:17",
+      "index": 17,
+      "title": "Al-Isra",
+      "titleArabic": "الإسراء",
+      "titleTr": "İsrâ",
+      "segmentCount": 111,
+      "file": "017.json"
+    },
+    {
+      "id": "quran:18",
+      "index": 18,
+      "title": "Al-Kahf",
+      "titleArabic": "الكهف",
+      "titleTr": "Kehf",
+      "segmentCount": 110,
+      "file": "018.json"
+    },
+    {
+      "id": "quran:19",
+      "index": 19,
+      "title": "Maryam",
+      "titleArabic": "مريم",
+      "titleTr": "Meryem",
+      "segmentCount": 98,
+      "file": "019.json"
+    },
+    {
+      "id": "quran:20",
+      "index": 20,
+      "title": "Taha",
+      "titleArabic": "طه",
+      "titleTr": "Tâhâ",
+      "segmentCount": 135,
+      "file": "020.json"
+    },
+    {
+      "id": "quran:21",
+      "index": 21,
+      "title": "Al-Anbya",
+      "titleArabic": "الأنبياء",
+      "titleTr": "Enbiyâ",
+      "segmentCount": 112,
+      "file": "021.json"
+    },
+    {
+      "id": "quran:22",
+      "index": 22,
+      "title": "Al-Hajj",
+      "titleArabic": "الحج",
+      "titleTr": "Hac",
+      "segmentCount": 78,
+      "file": "022.json"
+    },
+    {
+      "id": "quran:23",
+      "index": 23,
+      "title": "Al-Mu'minun",
+      "titleArabic": "المؤمنون",
+      "titleTr": "Mü'minûn",
+      "segmentCount": 118,
+      "file": "023.json"
+    },
+    {
+      "id": "quran:24",
+      "index": 24,
+      "title": "An-Nur",
+      "titleArabic": "النور",
+      "titleTr": "Nûr",
+      "segmentCount": 64,
+      "file": "024.json"
+    },
+    {
+      "id": "quran:25",
+      "index": 25,
+      "title": "Al-Furqan",
+      "titleArabic": "الفرقان",
+      "titleTr": "Furkân",
+      "segmentCount": 77,
+      "file": "025.json"
+    },
+    {
+      "id": "quran:26",
+      "index": 26,
+      "title": "Ash-Shu'ara",
+      "titleArabic": "الشعراء",
+      "titleTr": "Şuarâ",
+      "segmentCount": 227,
+      "file": "026.json"
+    },
+    {
+      "id": "quran:27",
+      "index": 27,
+      "title": "An-Naml",
+      "titleArabic": "النمل",
+      "titleTr": "Neml",
+      "segmentCount": 93,
+      "file": "027.json"
+    },
+    {
+      "id": "quran:28",
+      "index": 28,
+      "title": "Al-Qasas",
+      "titleArabic": "القصص",
+      "titleTr": "Kasas",
+      "segmentCount": 88,
+      "file": "028.json"
+    },
+    {
+      "id": "quran:29",
+      "index": 29,
+      "title": "Al-'Ankabut",
+      "titleArabic": "العنكبوت",
+      "titleTr": "Ankebût",
+      "segmentCount": 69,
+      "file": "029.json"
+    },
+    {
+      "id": "quran:30",
+      "index": 30,
+      "title": "Ar-Rum",
+      "titleArabic": "الروم",
+      "titleTr": "Rûm",
+      "segmentCount": 60,
+      "file": "030.json"
+    },
+    {
+      "id": "quran:31",
+      "index": 31,
+      "title": "Luqman",
+      "titleArabic": "لقمان",
+      "titleTr": "Lokmân",
+      "segmentCount": 34,
+      "file": "031.json"
+    },
+    {
+      "id": "quran:32",
+      "index": 32,
+      "title": "As-Sajdah",
+      "titleArabic": "السجدة",
+      "titleTr": "Secde",
+      "segmentCount": 30,
+      "file": "032.json"
+    },
+    {
+      "id": "quran:33",
+      "index": 33,
+      "title": "Al-Ahzab",
+      "titleArabic": "الأحزاب",
+      "titleTr": "Ahzâb",
+      "segmentCount": 73,
+      "file": "033.json"
+    },
+    {
+      "id": "quran:34",
+      "index": 34,
+      "title": "Saba",
+      "titleArabic": "سبإ",
+      "titleTr": "Sebe'",
+      "segmentCount": 54,
+      "file": "034.json"
+    },
+    {
+      "id": "quran:35",
+      "index": 35,
+      "title": "Fatir",
+      "titleArabic": "فاطر",
+      "titleTr": "Fâtır",
+      "segmentCount": 45,
+      "file": "035.json"
+    },
+    {
+      "id": "quran:36",
+      "index": 36,
+      "title": "Ya-Sin",
+      "titleArabic": "يس",
+      "titleTr": "Yâsîn",
+      "segmentCount": 83,
+      "file": "036.json"
+    },
+    {
+      "id": "quran:37",
+      "index": 37,
+      "title": "As-Saffat",
+      "titleArabic": "الصافات",
+      "titleTr": "Sâffât",
+      "segmentCount": 182,
+      "file": "037.json"
+    },
+    {
+      "id": "quran:38",
+      "index": 38,
+      "title": "Sad",
+      "titleArabic": "ص",
+      "titleTr": "Sâd",
+      "segmentCount": 88,
+      "file": "038.json"
+    },
+    {
+      "id": "quran:39",
+      "index": 39,
+      "title": "Az-Zumar",
+      "titleArabic": "الزمر",
+      "titleTr": "Zümer",
+      "segmentCount": 75,
+      "file": "039.json"
+    },
+    {
+      "id": "quran:40",
+      "index": 40,
+      "title": "Ghafir",
+      "titleArabic": "غافر",
+      "titleTr": "Mü'min",
+      "segmentCount": 85,
+      "file": "040.json"
+    },
+    {
+      "id": "quran:41",
+      "index": 41,
+      "title": "Fussilat",
+      "titleArabic": "فصلت",
+      "titleTr": "Fussilet",
+      "segmentCount": 54,
+      "file": "041.json"
+    },
+    {
+      "id": "quran:42",
+      "index": 42,
+      "title": "Ash-Shuraa",
+      "titleArabic": "الشورى",
+      "titleTr": "Şûrâ",
+      "segmentCount": 53,
+      "file": "042.json"
+    },
+    {
+      "id": "quran:43",
+      "index": 43,
+      "title": "Az-Zukhruf",
+      "titleArabic": "الزخرف",
+      "titleTr": "Zuhruf",
+      "segmentCount": 89,
+      "file": "043.json"
+    },
+    {
+      "id": "quran:44",
+      "index": 44,
+      "title": "Ad-Dukhan",
+      "titleArabic": "الدخان",
+      "titleTr": "Duhân",
+      "segmentCount": 59,
+      "file": "044.json"
+    },
+    {
+      "id": "quran:45",
+      "index": 45,
+      "title": "Al-Jathiyah",
+      "titleArabic": "الجاثية",
+      "titleTr": "Câsiye",
+      "segmentCount": 37,
+      "file": "045.json"
+    },
+    {
+      "id": "quran:46",
+      "index": 46,
+      "title": "Al-Ahqaf",
+      "titleArabic": "الأحقاف",
+      "titleTr": "Ahkâf",
+      "segmentCount": 35,
+      "file": "046.json"
+    },
+    {
+      "id": "quran:47",
+      "index": 47,
+      "title": "Muhammad",
+      "titleArabic": "محمد",
+      "titleTr": "Muhammed",
+      "segmentCount": 38,
+      "file": "047.json"
+    },
+    {
+      "id": "quran:48",
+      "index": 48,
+      "title": "Al-Fath",
+      "titleArabic": "الفتح",
+      "titleTr": "Fetih",
+      "segmentCount": 29,
+      "file": "048.json"
+    },
+    {
+      "id": "quran:49",
+      "index": 49,
+      "title": "Al-Hujurat",
+      "titleArabic": "الحجرات",
+      "titleTr": "Hucurât",
+      "segmentCount": 18,
+      "file": "049.json"
+    },
+    {
+      "id": "quran:50",
+      "index": 50,
+      "title": "Qaf",
+      "titleArabic": "ق",
+      "titleTr": "Kâf",
+      "segmentCount": 45,
+      "file": "050.json"
+    },
+    {
+      "id": "quran:51",
+      "index": 51,
+      "title": "Adh-Dhariyat",
+      "titleArabic": "الذاريات",
+      "titleTr": "Zâriyât",
+      "segmentCount": 60,
+      "file": "051.json"
+    },
+    {
+      "id": "quran:52",
+      "index": 52,
+      "title": "At-Tur",
+      "titleArabic": "الطور",
+      "titleTr": "Tûr",
+      "segmentCount": 49,
+      "file": "052.json"
+    },
+    {
+      "id": "quran:53",
+      "index": 53,
+      "title": "An-Najm",
+      "titleArabic": "النجم",
+      "titleTr": "Necm",
+      "segmentCount": 62,
+      "file": "053.json"
+    },
+    {
+      "id": "quran:54",
+      "index": 54,
+      "title": "Al-Qamar",
+      "titleArabic": "القمر",
+      "titleTr": "Kamer",
+      "segmentCount": 55,
+      "file": "054.json"
+    },
+    {
+      "id": "quran:55",
+      "index": 55,
+      "title": "Ar-Rahman",
+      "titleArabic": "الرحمن",
+      "titleTr": "Rahmân",
+      "segmentCount": 78,
+      "file": "055.json"
+    },
+    {
+      "id": "quran:56",
+      "index": 56,
+      "title": "Al-Waqi'ah",
+      "titleArabic": "الواقعة",
+      "titleTr": "Vâkıa",
+      "segmentCount": 96,
+      "file": "056.json"
+    },
+    {
+      "id": "quran:57",
+      "index": 57,
+      "title": "Al-Hadid",
+      "titleArabic": "الحديد",
+      "titleTr": "Hadîd",
+      "segmentCount": 29,
+      "file": "057.json"
+    },
+    {
+      "id": "quran:58",
+      "index": 58,
+      "title": "Al-Mujadila",
+      "titleArabic": "المجادلة",
+      "titleTr": "Mücâdele",
+      "segmentCount": 22,
+      "file": "058.json"
+    },
+    {
+      "id": "quran:59",
+      "index": 59,
+      "title": "Al-Hashr",
+      "titleArabic": "الحشر",
+      "titleTr": "Haşr",
+      "segmentCount": 24,
+      "file": "059.json"
+    },
+    {
+      "id": "quran:60",
+      "index": 60,
+      "title": "Al-Mumtahanah",
+      "titleArabic": "الممتحنة",
+      "titleTr": "Mümtehine",
+      "segmentCount": 13,
+      "file": "060.json"
+    },
+    {
+      "id": "quran:61",
+      "index": 61,
+      "title": "As-Saf",
+      "titleArabic": "الصف",
+      "titleTr": "Saf",
+      "segmentCount": 14,
+      "file": "061.json"
+    },
+    {
+      "id": "quran:62",
+      "index": 62,
+      "title": "Al-Jumu'ah",
+      "titleArabic": "الجمعة",
+      "titleTr": "Cuma",
+      "segmentCount": 11,
+      "file": "062.json"
+    },
+    {
+      "id": "quran:63",
+      "index": 63,
+      "title": "Al-Munafiqun",
+      "titleArabic": "المنافقون",
+      "titleTr": "Münâfikûn",
+      "segmentCount": 11,
+      "file": "063.json"
+    },
+    {
+      "id": "quran:64",
+      "index": 64,
+      "title": "At-Taghabun",
+      "titleArabic": "التغابن",
+      "titleTr": "Tegâbün",
+      "segmentCount": 18,
+      "file": "064.json"
+    },
+    {
+      "id": "quran:65",
+      "index": 65,
+      "title": "At-Talaq",
+      "titleArabic": "الطلاق",
+      "titleTr": "Talâk",
+      "segmentCount": 12,
+      "file": "065.json"
+    },
+    {
+      "id": "quran:66",
+      "index": 66,
+      "title": "At-Tahrim",
+      "titleArabic": "التحريم",
+      "titleTr": "Tahrîm",
+      "segmentCount": 12,
+      "file": "066.json"
+    },
+    {
+      "id": "quran:67",
+      "index": 67,
+      "title": "Al-Mulk",
+      "titleArabic": "الملك",
+      "titleTr": "Mülk",
+      "segmentCount": 30,
+      "file": "067.json"
+    },
+    {
+      "id": "quran:68",
+      "index": 68,
+      "title": "Al-Qalam",
+      "titleArabic": "القلم",
+      "titleTr": "Kalem",
+      "segmentCount": 52,
+      "file": "068.json"
+    },
+    {
+      "id": "quran:69",
+      "index": 69,
+      "title": "Al-Haqqah",
+      "titleArabic": "الحاقة",
+      "titleTr": "Hâkka",
+      "segmentCount": 52,
+      "file": "069.json"
+    },
+    {
+      "id": "quran:70",
+      "index": 70,
+      "title": "Al-Ma'arij",
+      "titleArabic": "المعارج",
+      "titleTr": "Meâric",
+      "segmentCount": 44,
+      "file": "070.json"
+    },
+    {
+      "id": "quran:71",
+      "index": 71,
+      "title": "Nuh",
+      "titleArabic": "نوح",
+      "titleTr": "Nûh",
+      "segmentCount": 28,
+      "file": "071.json"
+    },
+    {
+      "id": "quran:72",
+      "index": 72,
+      "title": "Al-Jinn",
+      "titleArabic": "الجن",
+      "titleTr": "Cin",
+      "segmentCount": 28,
+      "file": "072.json"
+    },
+    {
+      "id": "quran:73",
+      "index": 73,
+      "title": "Al-Muzzammil",
+      "titleArabic": "المزمل",
+      "titleTr": "Müzzemmil",
+      "segmentCount": 20,
+      "file": "073.json"
+    },
+    {
+      "id": "quran:74",
+      "index": 74,
+      "title": "Al-Muddaththir",
+      "titleArabic": "المدثر",
+      "titleTr": "Müddessir",
+      "segmentCount": 56,
+      "file": "074.json"
+    },
+    {
+      "id": "quran:75",
+      "index": 75,
+      "title": "Al-Qiyamah",
+      "titleArabic": "القيامة",
+      "titleTr": "Kıyâmet",
+      "segmentCount": 40,
+      "file": "075.json"
+    },
+    {
+      "id": "quran:76",
+      "index": 76,
+      "title": "Al-Insan",
+      "titleArabic": "الانسان",
+      "titleTr": "İnsân",
+      "segmentCount": 31,
+      "file": "076.json"
+    },
+    {
+      "id": "quran:77",
+      "index": 77,
+      "title": "Al-Mursalat",
+      "titleArabic": "المرسلات",
+      "titleTr": "Mürselât",
+      "segmentCount": 50,
+      "file": "077.json"
+    },
+    {
+      "id": "quran:78",
+      "index": 78,
+      "title": "An-Naba",
+      "titleArabic": "النبإ",
+      "titleTr": "Nebe",
+      "segmentCount": 40,
+      "file": "078.json"
+    },
+    {
+      "id": "quran:79",
+      "index": 79,
+      "title": "An-Nazi'at",
+      "titleArabic": "النازعات",
+      "titleTr": "Naziât",
+      "segmentCount": 46,
+      "file": "079.json"
+    },
+    {
+      "id": "quran:80",
+      "index": 80,
+      "title": "'Abasa",
+      "titleArabic": "عبس",
+      "titleTr": "Abese",
+      "segmentCount": 42,
+      "file": "080.json"
+    },
+    {
+      "id": "quran:81",
+      "index": 81,
+      "title": "At-Takwir",
+      "titleArabic": "التكوير",
+      "titleTr": "Tekvîr",
+      "segmentCount": 29,
+      "file": "081.json"
+    },
+    {
+      "id": "quran:82",
+      "index": 82,
+      "title": "Al-Infitar",
+      "titleArabic": "الإنفطار",
+      "titleTr": "İnfitâr",
+      "segmentCount": 19,
+      "file": "082.json"
+    },
+    {
+      "id": "quran:83",
+      "index": 83,
+      "title": "Al-Mutaffifin",
+      "titleArabic": "المطففين",
+      "titleTr": "Mutaffifîn",
+      "segmentCount": 36,
+      "file": "083.json"
+    },
+    {
+      "id": "quran:84",
+      "index": 84,
+      "title": "Al-Inshiqaq",
+      "titleArabic": "الإنشقاق",
+      "titleTr": "İnşikâk",
+      "segmentCount": 25,
+      "file": "084.json"
+    },
+    {
+      "id": "quran:85",
+      "index": 85,
+      "title": "Al-Buruj",
+      "titleArabic": "البروج",
+      "titleTr": "Burûc",
+      "segmentCount": 22,
+      "file": "085.json"
+    },
+    {
+      "id": "quran:86",
+      "index": 86,
+      "title": "At-Tariq",
+      "titleArabic": "الطارق",
+      "titleTr": "Târık",
+      "segmentCount": 17,
+      "file": "086.json"
+    },
+    {
+      "id": "quran:87",
+      "index": 87,
+      "title": "Al-A'la",
+      "titleArabic": "الأعلى",
+      "titleTr": "A'lâ",
+      "segmentCount": 19,
+      "file": "087.json"
+    },
+    {
+      "id": "quran:88",
+      "index": 88,
+      "title": "Al-Ghashiyah",
+      "titleArabic": "الغاشية",
+      "titleTr": "Gâşiye",
+      "segmentCount": 26,
+      "file": "088.json"
+    },
+    {
+      "id": "quran:89",
+      "index": 89,
+      "title": "Al-Fajr",
+      "titleArabic": "الفجر",
+      "titleTr": "Fecr",
+      "segmentCount": 30,
+      "file": "089.json"
+    },
+    {
+      "id": "quran:90",
+      "index": 90,
+      "title": "Al-Balad",
+      "titleArabic": "البلد",
+      "titleTr": "Beled",
+      "segmentCount": 20,
+      "file": "090.json"
+    },
+    {
+      "id": "quran:91",
+      "index": 91,
+      "title": "Ash-Shams",
+      "titleArabic": "الشمس",
+      "titleTr": "Şems",
+      "segmentCount": 15,
+      "file": "091.json"
+    },
+    {
+      "id": "quran:92",
+      "index": 92,
+      "title": "Al-Layl",
+      "titleArabic": "الليل",
+      "titleTr": "Leyl",
+      "segmentCount": 21,
+      "file": "092.json"
+    },
+    {
+      "id": "quran:93",
+      "index": 93,
+      "title": "Ad-Duhaa",
+      "titleArabic": "الضحى",
+      "titleTr": "Duhâ",
+      "segmentCount": 11,
+      "file": "093.json"
+    },
+    {
+      "id": "quran:94",
+      "index": 94,
+      "title": "Ash-Sharh",
+      "titleArabic": "الشرح",
+      "titleTr": "İnşirâh",
+      "segmentCount": 8,
+      "file": "094.json"
+    },
+    {
+      "id": "quran:95",
+      "index": 95,
+      "title": "At-Tin",
+      "titleArabic": "التين",
+      "titleTr": "Tîn",
+      "segmentCount": 8,
+      "file": "095.json"
+    },
+    {
+      "id": "quran:96",
+      "index": 96,
+      "title": "Al-'Alaq",
+      "titleArabic": "العلق",
+      "titleTr": "Alak",
+      "segmentCount": 19,
+      "file": "096.json"
+    },
+    {
+      "id": "quran:97",
+      "index": 97,
+      "title": "Al-Qadr",
+      "titleArabic": "القدر",
+      "titleTr": "Kadir",
+      "segmentCount": 5,
+      "file": "097.json"
+    },
+    {
+      "id": "quran:98",
+      "index": 98,
+      "title": "Al-Bayyinah",
+      "titleArabic": "البينة",
+      "titleTr": "Beyyine",
+      "segmentCount": 8,
+      "file": "098.json"
+    },
+    {
+      "id": "quran:99",
+      "index": 99,
+      "title": "Az-Zalzalah",
+      "titleArabic": "الزلزلة",
+      "titleTr": "Zilzâl",
+      "segmentCount": 8,
+      "file": "099.json"
+    },
+    {
+      "id": "quran:100",
+      "index": 100,
+      "title": "Al-'Adiyat",
+      "titleArabic": "العاديات",
+      "titleTr": "Âdiyât",
+      "segmentCount": 11,
+      "file": "100.json"
+    },
+    {
+      "id": "quran:101",
+      "index": 101,
+      "title": "Al-Qari'ah",
+      "titleArabic": "القارعة",
+      "titleTr": "Kâria",
+      "segmentCount": 11,
+      "file": "101.json"
+    },
+    {
+      "id": "quran:102",
+      "index": 102,
+      "title": "At-Takathur",
+      "titleArabic": "التكاثر",
+      "titleTr": "Tekâsür",
+      "segmentCount": 8,
+      "file": "102.json"
+    },
+    {
+      "id": "quran:103",
+      "index": 103,
+      "title": "Al-'Asr",
+      "titleArabic": "العصر",
+      "titleTr": "Asr",
+      "segmentCount": 3,
+      "file": "103.json"
+    },
+    {
+      "id": "quran:104",
+      "index": 104,
+      "title": "Al-Humazah",
+      "titleArabic": "الهمزة",
+      "titleTr": "Hümeze",
+      "segmentCount": 9,
+      "file": "104.json"
+    },
+    {
+      "id": "quran:105",
+      "index": 105,
+      "title": "Al-Fil",
+      "titleArabic": "الفيل",
+      "titleTr": "Fîl",
+      "segmentCount": 5,
+      "file": "105.json"
+    },
+    {
+      "id": "quran:106",
+      "index": 106,
+      "title": "Quraysh",
+      "titleArabic": "قريش",
+      "titleTr": "Kureyş",
+      "segmentCount": 4,
+      "file": "106.json"
+    },
+    {
+      "id": "quran:107",
+      "index": 107,
+      "title": "Al-Ma'un",
+      "titleArabic": "الماعون",
+      "titleTr": "Maûn",
+      "segmentCount": 7,
+      "file": "107.json"
+    },
+    {
+      "id": "quran:108",
+      "index": 108,
+      "title": "Al-Kawthar",
+      "titleArabic": "الكوثر",
+      "titleTr": "Kevser",
+      "segmentCount": 3,
+      "file": "108.json"
+    },
+    {
+      "id": "quran:109",
+      "index": 109,
+      "title": "Al-Kafirun",
+      "titleArabic": "الكافرون",
+      "titleTr": "Kâfirûn",
+      "segmentCount": 6,
+      "file": "109.json"
+    },
+    {
+      "id": "quran:110",
+      "index": 110,
+      "title": "An-Nasr",
+      "titleArabic": "النصر",
+      "titleTr": "Nasr",
+      "segmentCount": 3,
+      "file": "110.json"
+    },
+    {
+      "id": "quran:111",
+      "index": 111,
+      "title": "Al-Masad",
+      "titleArabic": "المسد",
+      "titleTr": "Tebbet",
+      "segmentCount": 5,
+      "file": "111.json"
+    },
+    {
+      "id": "quran:112",
+      "index": 112,
+      "title": "Al-Ikhlas",
+      "titleArabic": "الإخلاص",
+      "titleTr": "İhlâs",
+      "segmentCount": 4,
+      "file": "112.json"
+    },
+    {
+      "id": "quran:113",
+      "index": 113,
+      "title": "Al-Falaq",
+      "titleArabic": "الفلق",
+      "titleTr": "Felak",
+      "segmentCount": 5,
+      "file": "113.json"
+    },
+    {
+      "id": "quran:114",
+      "index": 114,
+      "title": "An-Nas",
+      "titleArabic": "الناس",
+      "titleTr": "Nâs",
+      "segmentCount": 6,
+      "file": "114.json"
+    }
+  ]
+}

@@ -174,6 +174,7 @@ function Room({ kind }: { kind: SessionKind }) {
   const recitation = useRecitation({
     expectedWords,
     lang: entry?.text.lang,
+    subject: entry?.item.id,
     onChecked: (check) =>
       /*
        * An accepted recitation is accepted. Listing the words the model

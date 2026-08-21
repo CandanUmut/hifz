@@ -144,36 +144,39 @@ export default function TextDetail() {
   const reviewIndices = new Set(
     items.filter((i) => i.stage === 'review').map((i) => indexById.get(i.segmentId)),
   )
-  const unlisted = segments.map((s) => s.index).filter((index) => !plannedIndices.has(index))
   const selected = [...selection].sort((a, b) => a - b)
 
-  // What a study sitting would cover: whatever is on the study list, or the
-  // next few that are on neither list.
-  const studyBatch = (studyIndices.size > 0
-    ? [...studyIndices].filter((i): i is number => i != null).sort((a, b) => a - b)
-    : unlisted.slice(0, settings.memorizeBatch))
-
   /*
-   * Both primaries add what they need first. Studying a surah nobody has
-   * listed yet means the next few ayah; reviewing one means all of it, because
-   * "I want to go over this" is about the surah, not about a batch size.
+   * Both primaries add what they need and then go.
+   *
+   * These used to be a pair of tiny grey links for adding to a list and a pair
+   * of buttons that were disabled until you had used them — so the page asked
+   * you to do a filing step before it would let you do the thing you came for.
+   * Now there are two buttons. One memorises, one tests. Selecting ayah aims
+   * them at the selection; selecting nothing aims them at the surah.
    */
+  const target = selected.length > 0 ? selected : segments.map((seg) => seg.index)
+
   const startStudy = async () => {
-    const batch = studyBatch.length > 0 ? studyBatch : segments.slice(0, settings.memorizeBatch).map((s) => s.index)
+    const batch =
+      selected.length > 0
+        ? selected
+        : studyIndices.size > 0
+          ? [...studyIndices].filter((i): i is number => i != null).sort((a, b) => a - b)
+          : segments.slice(0, settings.memorizeBatch).map((seg) => seg.index)
     if (!batch.length) return
-    if (studyIndices.size === 0) await add(batch, 'study')
+    await add(batch, 'study')
     navigate(
       `/memorize?text=${encodeURIComponent(text.id)}&from=${batch[0]}&to=${batch[batch.length - 1]}`,
     )
   }
 
-  const startReview = async () => {
-    if (reviewIndices.size === 0) {
-      const all = segments.map((s) => s.index)
-      if (!all.length) return
-      await add(all, 'review')
-    }
-    navigate(`/practise?text=${encodeURIComponent(text.id)}`)
+  const startTest = async () => {
+    if (!target.length) return
+    await add(target, 'review')
+    navigate(
+      `/test?text=${encodeURIComponent(text.id)}&from=${target[0]}&to=${target[target.length - 1]}`,
+    )
   }
 
   const toggle = (index: number) =>
@@ -299,35 +302,6 @@ export default function TextDetail() {
         ))}
       </ol>
 
-      {text.attribution && (
-        <footer className="mt-10 border-t border-rule pt-5 text-micro text-ink-soft">
-          <p>
-            {text.attribution.edition} · {text.attribution.source}{' '}
-            <a
-              href={text.attribution.sourceUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline underline-offset-2"
-            >
-              {text.attribution.sourceUrl.replace(/^https?:\/\//, '')}
-            </a>
-          </p>
-          {text.editions?.map((edition) => (
-            <p key={edition.id} className="mt-1">
-              {edition.title} — {edition.translator}
-              {edition.license ? ` · ${edition.license}` : ''}
-            </p>
-          ))}
-          {text.transliterationEditions?.map((edition) => (
-            <p key={edition.id} className="mt-1">
-              Transliteration ({edition.title}) — {edition.source}
-              {edition.license ? ` · ${edition.license}` : ''}
-            </p>
-          ))}
-          {text.license && <p className="mt-2">{text.license}</p>}
-        </footer>
-      )}
-
       {/* One primary action, thumb-reachable. */}
       <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
         <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -349,76 +323,14 @@ export default function TextDetail() {
               {t('text.alsoSchedule')}
             </label>
           )}
-          <div className="flex items-center gap-3">
-          {/*
-            Two lists, two buttons, and never a decision made on the reader's
-            behalf. Selecting ayah changes what the buttons add; selecting
-            nothing means the whole surah.
-          */}
-          {selected.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => add(selected, 'study')}
-              >
-                {t('text.addToStudy', { count: selected.length })}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => add(selected, 'review')}
-              >
-                {t('text.addToReview', { count: selected.length })}
-              </button>
-            </div>
-          ) : (
-            <>
-              {unlisted.length > 0 && (
-                <div className="mb-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
-                  <button
-                    type="button"
-                    className="text-micro text-ink-soft underline underline-offset-2 hover:text-ink"
-                    onClick={() => add(unlisted, 'study')}
-                  >
-                    {t('text.addAllToStudy')}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-micro text-ink-soft underline underline-offset-2 hover:text-ink"
-                    onClick={() => add(unlisted, 'review')}
-                  >
-                    {t('text.addAllToReview')}
-                  </button>
-                </div>
-              )}
-              {/*
-                Neither of these is ever dead. "Review now" used to be
-                disabled until the surah had separately been put on the review
-                list, which left Study as the only lit button — so someone who
-                simply wanted to go over a surah they already knew was made to
-                study it first. A button that names an intention carries it
-                out: if there is nothing on the list yet, tapping adds the
-                whole surah and goes.
-              */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => void startStudy()}
-                >
-                  {studyBatch.length > 0
-                    ? t('text.study', { count: studyBatch.length })
-                    : t('text.studyAll')}
-                </button>
-                <button type="button" className="btn-primary" onClick={() => void startReview()}>
-                  {reviewIndices.size > 0
-                    ? t('text.reviewNow', { count: reviewIndices.size })
-                    : t('text.reviewAll')}
-                </button>
-              </div>
-            </>
-          )}
+          {/* Two buttons, both real, neither ever disabled. */}
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn-secondary py-3" onClick={() => void startStudy()}>
+              {selected.length > 0 ? t('text.studySelected', { count: selected.length }) : t('text.studyAll')}
+            </button>
+            <button type="button" className="btn-primary py-3" onClick={() => void startTest()}>
+              {selected.length > 0 ? t('text.testSelected', { count: selected.length }) : t('test.title')}
+            </button>
           </div>
         </div>
       </div>

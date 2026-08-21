@@ -87,6 +87,12 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  /*
+   * A build stamp, shown on the About page. When someone says "it still does
+   * not work on my phone", the first thing worth knowing is which build their
+   * phone is actually running.
+   */
+  define: { __BUILD_ID__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   base: './',
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
   build: { target: 'es2020' },

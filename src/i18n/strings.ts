@@ -48,11 +48,11 @@ export const STRINGS = {
 
   // --- today ---------------------------------------------------------------
   'today.due': {
-    en: '{count} to review — about {minutes} min.',
-    tr: '{count} tekrar var — yaklaşık {minutes} dk.',
+    en: '{count} to test — about {minutes} min.',
+    tr: 'Test edilecek {count} ayet var — yaklaşık {minutes} dk.',
   },
-  'today.nothingDue': { en: 'Nothing to review right now.', tr: 'Şu an tekrar edilecek bir şey yok.' },
-  'today.start': { en: 'Start reviewing', tr: 'Tekrara başla' },
+  'today.nothingDue': { en: 'Nothing due to test right now.', tr: 'Şu an test edilecek bir şey yok.' },
+  'today.start': { en: 'Start testing', tr: 'Teste başla' },
   'today.addMore': { en: 'Add more to your plan', tr: 'Ezber listene ekle' },
   'today.emptyTitle': { en: 'Nothing here yet.', tr: 'Henüz bir şey yok.' },
   'today.emptyBody': {
@@ -68,14 +68,15 @@ export const STRINGS = {
   },
   'today.studyStart': { en: 'Start studying', tr: 'Çalışmaya başla' },
   'today.nothingToStudy': { en: 'Nothing waiting to be studied.', tr: 'Çalışılacak bir şey yok.' },
-  'today.reviewHeading': { en: 'Review', tr: 'Tekrar' },
+  // The two lists: one is where you learn it, one is where you prove it.
+  'today.reviewHeading': { en: 'Testing', tr: 'Test' },
   'today.studyHeading': { en: 'Study', tr: 'Çalışma' },
   'today.coldTitle': {
     en: '{count} you haven’t seen in over a month.',
     tr: 'Bir aydır bakmadığın {count} bölüm var.',
   },
   'today.coldStart': { en: 'Test them cold', tr: 'Baştan test et' },
-  'today.dueShort': { en: '{count} due', tr: '{count} tekrar' },
+  'today.dueShort': { en: '{count} due', tr: '{count} test' },
 
   // --- library -------------------------------------------------------------
   'library.title': { en: 'Library', tr: 'Kütüphane' },
@@ -102,17 +103,19 @@ export const STRINGS = {
   'text.addAll': { en: 'Memorise this surah', tr: 'Bu sureyi ezberle' },
   'text.addSelected': { en: 'Add {count} to my plan', tr: '{count} ayeti listeme ekle' },
   'text.addOne': { en: 'Add to my plan', tr: 'Listeme ekle' },
-  'text.practise': { en: 'Review this surah', tr: 'Bu sureyi tekrar et' },
+  'text.practise': { en: 'Test this surah', tr: 'Bu sureyi test et' },
   'text.addToStudy': { en: 'Add to study ({count})', tr: 'Çalışmaya ekle ({count})' },
-  'text.addToReview': { en: 'Add to review ({count})', tr: 'Tekrara ekle ({count})' },
+  'text.addToReview': { en: 'Add to testing ({count})', tr: 'Teste ekle ({count})' },
   'text.addAllToStudy': { en: 'Add the whole surah to study', tr: 'Tüm sureyi çalışmaya ekle' },
-  'text.addAllToReview': { en: 'Add the whole surah to review', tr: 'Tüm sureyi tekrara ekle' },
+  'text.addAllToReview': { en: 'Add the whole surah to testing', tr: 'Tüm sureyi teste ekle' },
   'text.study': { en: 'Study ({count})', tr: 'Çalış ({count})' },
+  'text.studySelected': { en: 'Memorise {count}', tr: '{count} ayeti ezberle' },
+  'text.testSelected': { en: 'Test {count}', tr: '{count} ayeti test et' },
   'text.studyAll': { en: 'Start memorising', tr: 'Ezberlemeye başla' },
-  'text.reviewAll': { en: 'Review the whole thing', tr: 'Baştan sona tekrar et' },
-  'text.reviewNow': { en: 'Review ({count})', tr: 'Tekrar et ({count})' },
+  'text.reviewAll': { en: 'Test the whole thing', tr: 'Baştan sona test et' },
+  'text.reviewNow': { en: 'Test ({count})', tr: 'Test et ({count})' },
   'text.onStudyList': { en: '{count} to study', tr: 'Çalışılacak {count} ayet' },
-  'text.onReviewList': { en: '{count} in review', tr: 'Tekrarda {count} ayet' },
+  'text.onReviewList': { en: '{count} being tested', tr: 'Testte {count} ayet' },
   'text.notAddedYet': { en: 'Not on either list yet.', tr: 'Henüz iki listede de yok.' },
   'text.added': { en: 'Added.', tr: 'Eklendi.' },
   'text.inPlanCount': { en: '{done} of {total} in your plan', tr: '{total} ayetin {done} tanesi listende' },
@@ -339,7 +342,7 @@ export const STRINGS = {
   'review.praise4': { en: 'Steady work.', tr: 'İstikrarlı gidiyorsun.' },
 
   'memorize.donePraise': { en: 'You learned it.', tr: 'Ezberledin.' },
-  'memorize.reviewNow': { en: 'Review it now', tr: 'Şimdi tekrar et' },
+  'memorize.reviewNow': { en: 'Test it now', tr: 'Şimdi test et' },
 
   // --- rhythm --------------------------------------------------------------
   'rhythm.todayDone': { en: '{count} done today. Good.', tr: 'Bugün {count} tane yaptın. Güzel.' },
@@ -356,6 +359,59 @@ export const STRINGS = {
     en: 'Read by your device’s voice — there is no recording for this text.',
     tr: 'Cihazının sesiyle okunuyor — bu metnin kaydı yok.',
   },
+
+  // --- the cumulative test -------------------------------------------------
+  'test.title': { en: 'Test my memory', tr: 'Ezberimi test et' },
+  'test.progress': { en: 'Step {step} of {total}', tr: '{total} adımın {step}. adımı' },
+  'test.single': { en: 'Ayah {ref}', tr: 'Ayet {ref}' },
+  'test.join': { en: '{from} through {to}, joined', tr: '{from} – {to} arası, birleşik' },
+  'test.whole': { en: 'All of it — {from} to {to}', tr: 'Tamamı — {from} – {to}' },
+  'test.singleBody': {
+    en: 'Recite this ayah from memory.',
+    tr: 'Bu ayeti ezberinden oku.',
+  },
+  'test.joinBody': {
+    en: 'Recite it straight through, without stopping between the ayah. This is the part that breaks.',
+    tr: 'Ayetler arasında durmadan baştan sona oku. Kopma tam burada olur.',
+  },
+  'test.knew': { en: 'I had it', tr: 'Bildim' },
+  'test.missed': { en: 'I lost it', tr: 'Kaçırdım' },
+  'test.leave': { en: 'Leave the test', tr: 'Testten çık' },
+  'test.nothing': { en: 'Nothing to test here yet.', tr: 'Burada test edilecek bir şey yok.' },
+  'test.score': { en: '{passed} of {total}', tr: '{total} adımın {passed} tanesi' },
+  'test.doneWhole': { en: 'You recited the whole thing.', tr: 'Tamamını okudun.' },
+  'test.donePartly': { en: 'Test finished.', tr: 'Test bitti.' },
+  'test.doneBody': {
+    en: 'The joins you lost are where to start next time.',
+    tr: 'Kaçırdığın birleşimler bir dahaki sefere başlanacak yer.',
+  },
+  'test.again': { en: 'Run it again', tr: 'Tekrar çalıştır' },
+  'common.back': { en: 'Back', tr: 'Geri' },
+
+  // --- about ---------------------------------------------------------------
+  'about.title': { en: 'About hifz', tr: 'hifz hakkında' },
+  'about.what': {
+    en: 'A free, open app for memorising text word for word and keeping it memorised.',
+    tr: 'Metni kelimesi kelimesine ezberlemek ve ezberde tutmak için ücretsiz, açık bir uygulama.',
+  },
+  'about.privacy': { en: 'Your data', tr: 'Verilerin' },
+  'about.privacyBody': {
+    en: 'Everything stays on this device. There is no account and no server. The one exception is the recitation check: unless you download the on-device model, your browser’s own speech recognition may send the audio to its vendor.',
+    tr: 'Her şey bu cihazda kalır. Hesap yok, sunucu yok. Tek istisna okuma kontrolü: cihaz içi modeli indirmediysen tarayıcının kendi ses tanıması sesi kendi sağlayıcısına gönderebilir.',
+  },
+  'about.sources': { en: 'Where the text comes from', tr: 'Metnin kaynağı' },
+  'about.translations': { en: 'Translations', tr: 'Mealler' },
+  'about.transliteration': { en: 'Transliteration', tr: 'Latin harfleri' },
+  'about.licences': { en: 'Licences', tr: 'Lisanslar' },
+  'about.audio': { en: 'Recitation audio', tr: 'Okuyuş kaydı' },
+  'about.audioBody': {
+    en: 'Streamed from an external Qur’an audio service when you press play. No audio is bundled with the app.',
+    tr: 'Çal’a bastığında dış bir Kur’an ses servisinden akar. Uygulamayla birlikte hiçbir ses dosyası gelmez.',
+  },
+  'about.code': { en: 'Source code', tr: 'Kaynak kodu' },
+  'about.build': { en: 'Build {id}', tr: 'Sürüm {id}' },
+  'about.backToSettings': { en: 'Back to settings', tr: 'Ayarlara dön' },
+  'settings.about': { en: 'About, sources and licences', tr: 'Hakkında, kaynaklar ve lisanslar' },
 
   // --- status --------------------------------------------------------------
   'intent.learning': { en: 'Learning', tr: 'Ezberliyorum' },

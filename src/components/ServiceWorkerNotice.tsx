@@ -1,19 +1,50 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useT } from '@/i18n'
 
+/** Screens where a reload would throw away work in progress. */
+const MID_SESSION = /^\/(review|practise|cold-check|memorize|test)/
+
+/** How often an installed app looks for a new version. */
+const CHECK_MS = 30 * 60 * 1000
+
 /**
- * Updates are offered, never forced: a reader mid-session should not have the
- * page swapped under them. Both notices are one quiet line at the bottom.
+ * Keeping an installed app up to date.
+ *
+ * This used to ask every time, which sounds respectful and is not: an
+ * installed app on a phone rarely gets a fresh page load, so the question
+ * often never appeared, and a device could sit on a build from weeks ago
+ * wondering why a fixed bug was not fixed. Now the new version is applied the
+ * moment it is safe to reload — which is everywhere except mid-session — and
+ * the question is only asked when answering it would cost the reader a card.
  */
 export function ServiceWorkerNotice() {
+  const { pathname } = useLocation()
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW()
+  } = useRegisterSW({
+    onRegisteredSW(_url, registration) {
+      if (!registration) return
+      const check = () => {
+        if (document.visibilityState === 'visible') void registration.update()
+      }
+      window.setInterval(check, CHECK_MS)
+      document.addEventListener('visibilitychange', check)
+    },
+  })
   const [dismissedOffline, setDismissedOffline] = useState(false)
+  const [postponed, setPostponed] = useState(false)
   const t = useT()
+
+  const busy = MID_SESSION.test(pathname)
+
+  useEffect(() => {
+    if (!needRefresh || busy || postponed) return
+    void updateServiceWorker(true)
+  }, [busy, needRefresh, postponed, updateServiceWorker])
 
   useEffect(() => {
     if (!offlineReady) return
@@ -21,14 +52,21 @@ export function ServiceWorkerNotice() {
     return () => window.clearTimeout(timer)
   }, [offlineReady, setOfflineReady])
 
-  if (needRefresh) {
+  if (needRefresh && (busy || postponed)) {
     return (
       <Bar>
         <span className="me-auto">{t('sw.updateReady')}</span>
         <button type="button" className="btn-text" onClick={() => updateServiceWorker(true)}>
           {t('sw.reload')}
         </button>
-        <button type="button" className="btn-text" onClick={() => setNeedRefresh(false)}>
+        <button
+          type="button"
+          className="btn-text"
+          onClick={() => {
+            setPostponed(true)
+            setNeedRefresh(false)
+          }}
+        >
           {t('sw.later')}
         </button>
       </Bar>

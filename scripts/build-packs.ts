@@ -48,17 +48,22 @@ interface PackDef {
 }
 
 const PACKS: Record<string, PackDef> = {
-  'al-fatiha': {
-    id: 'quran-al-fatiha',
-    title: 'Al-Fātiḥa',
-    subtitle: 'The opening — 7 ayah',
-    surahs: [1],
-  },
-  'juz-amma': {
-    id: 'quran-juz-amma',
-    title: 'Juz ʿAmma',
-    subtitle: 'Surah 78–114, the last thirtieth',
-    surahs: Array.from({ length: 37 }, (_, i) => 78 + i),
+  /*
+   * One pack, the whole muṣḥaf, and an id that does not name the pack.
+   *
+   * There used to be three overlapping packs — al-Fātiḥa, Juz ʿAmma, and then
+   * everything — which listed the same surah up to three times in the library
+   * and gave it a different id in each, so progress made on one copy was
+   * invisible on another. A surah is a surah.
+   *
+   * One file per surah: only the manifest is precached, and a surah is fetched
+   * the first time it is opened, so opening al-Fātiḥa never pulls al-Baqarah.
+   */
+  quran: {
+    id: 'quran',
+    title: 'The whole Qur’an',
+    subtitle: 'All 114 surah',
+    surahs: Array.from({ length: 114 }, (_, i) => i + 1),
   },
 }
 
@@ -536,8 +541,19 @@ async function build(packKey: string) {
           const text = translitVerses.get(edition.id)?.get(ref)
           if (text) transliterations[edition.id] = text
         } else if (words.some((w) => w.translit)) {
-          // Derived, so it keeps exactly one token per Arabic word.
-          transliterations[edition.id] = words.map((w) => w.translit ?? '—').join(' ')
+          /*
+           * Derived, so it keeps exactly one token per Arabic word — which
+           * means a word's own transliteration may not contain a space.
+           *
+           * A handful of words are written with a space inside them: 37:130
+           * has إِلْ يَاسِينَ, one word, transliterated "il yāsīna". Joining
+           * those with spaces produced four tokens for three words and the
+           * highlight walked off the end of the line. The word joiner is
+           * invisible and is not whitespace, so the token count holds.
+           */
+          transliterations[edition.id] = words
+            .map((w) => (w.translit ?? '—').trim().replace(/\s+/g, '\u2060'))
+            .join(' ')
         }
       }
 
