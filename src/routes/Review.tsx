@@ -22,7 +22,7 @@ import {
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
 import { useT } from '@/i18n'
-import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
+import { meaningLines, resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { segmentWords, words as splitWords } from '@/lib/text'
 import { passageClass } from '@/lib/typography'
 import { useAudio } from '@/lib/useAudio'
@@ -173,6 +173,7 @@ function Room({ kind }: { kind: SessionKind }) {
   )
   const recitation = useRecitation({
     expectedWords,
+    lang: entry?.text.lang,
     onChecked: (check) =>
       /*
        * An accepted recitation is accepted. Listing the words the model
@@ -273,7 +274,7 @@ function Room({ kind }: { kind: SessionKind }) {
       <div className="mx-auto flex min-h-[calc(100dvh-4.25rem)] max-w-column flex-col justify-center px-5 pb-48 pt-6">
         {/* One framed area holds whatever is being asked, so the screen has a
             subject instead of text floating in the middle of nothing. */}
-        <div className="card flex min-h-[44vh] flex-col justify-center px-5 py-6">
+        <div className="card flex min-h-[34vh] flex-col justify-center px-5 py-6">
           <>
             {/* Context for a join: the tail of the line before it. */}
             {item.type === 'link' && (
@@ -346,9 +347,12 @@ function Room({ kind }: { kind: SessionKind }) {
             {showAnswer && (
               <>
                 <Transliteration line={translit} className="mt-4" />
-                {meaning.tr && item.type !== 'meaning' && (
-                  <p className="meaning mt-3">{meaning.tr.text}</p>
-                )}
+                {item.type !== 'meaning' &&
+                  meaningLines(meaning, settings).map((line) => (
+                    <p key={line.title} className="meaning mt-3">
+                      {line.text}
+                    </p>
+                  ))}
                 {audio.available && (
                   <button
                     type="button"

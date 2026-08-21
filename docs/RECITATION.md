@@ -6,16 +6,31 @@ screen while you are trying to remember it, and you can watch the check happen
 instead of waiting for a verdict. It is offered directly on the review screen;
 tapping it explains the one-time download before anything is fetched.
 
+## Two listeners
+
+**The browser's own recogniser is the default.** Every browser has shipped one
+for years: nothing to download, and words appear while you are still speaking
+rather than a few seconds after you stop. The cost is that some browsers send
+the audio to their own servers, which is a real difference from everything else
+this app does — so it is said in a sentence next to the button rather than
+buried, and the alternative is one tap away.
+
+**The on-device model is the private one.** A Qur'an-tuned Whisper, about
+150 MB, running in a worker on this device. Nothing is uploaded. It is the
+better recogniser for recitation and the worse one for a phone: 150 MB of
+weights next to a page is enough to have the tab killed for memory on iOS,
+which is what "a problem repeatedly occurred" means. It is offered, not
+imposed, and if the worker dies the app says so instead of going down with it.
+
+Either way the only thing kept is the transcript, in the local attempt history
+alongside every other attempt.
+
 ## What it does and does not do
 
-**Your voice never leaves the device.** Recognition runs in the browser, in a
-worker. The samples are transcribed and dropped; nothing is uploaded, and the
-only thing kept is the transcript, in the local attempt history alongside every
-other attempt.
-
-**The microphone is read as raw samples, not as a recording.** There is no
-MediaRecorder and no container: the audio is taken off the Web Audio graph,
-resampled to 16 kHz and handed to the model as numbers. That is what makes a
+**The microphone is read as raw samples, not as a recording.** On the
+on-device path there is no MediaRecorder and no container: the audio is taken
+off the Web Audio graph, resampled to 16 kHz and handed to the model as
+numbers. That is what makes a
 partial read free — the running transcript costs nothing to take — and it is
 what makes it work on iOS Safari, where MediaRecorder produces a fragmented
 MP4 whose fragments cannot be decoded on their own. Recitation checking used to

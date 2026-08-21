@@ -12,6 +12,7 @@ export function Welcome() {
   const lang = useSettings((s) => s.lang)
   const introSeen = useSettings((s) => s.introSeen)
   const set = useSettings((s) => s.set)
+  const chooseLang = useSettings((s) => s.chooseLang)
   const [step, setStep] = useState(0)
 
   // The chooser cannot use useT: there is no language yet.
@@ -30,7 +31,7 @@ export function Welcome() {
               type="button"
               onMouseEnter={() => setPreview(option)}
               onFocus={() => setPreview(option)}
-              onClick={() => set('lang', option)}
+              onClick={() => chooseLang(option)}
               className="btn-secondary w-full py-4 text-base"
             >
               {option === 'tr' ? 'Türkçe' : 'English'}

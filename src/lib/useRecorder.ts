@@ -7,6 +7,16 @@ export type RecorderState = 'idle' | 'requesting' | 'recording' | 'denied' | 'un
 const SILENCE_PEAK = 0.012
 
 /**
+ * A hard ceiling on how much audio is kept.
+ *
+ * Whisper reads thirty seconds at a time whatever you give it, so anything
+ * older than that is never looked at — and on a phone an unbounded buffer is
+ * how a forgotten recording turns into a killed tab. Two minutes of 16 kHz
+ * floats is about 15 MB, and the oldest second falls off the front after that.
+ */
+const MAX_SAMPLES = 120 * 16_000
+
+/**
  * Microphone capture for the recitation check.
  *
  * This used to be a MediaRecorder whose blobs were handed to
@@ -58,16 +68,30 @@ export function useRecorder() {
 
   useEffect(() => cleanup, [cleanup])
 
-  /** Everything captured so far, at the model's sample rate. */
-  const snapshot = useCallback((): Float32Array | null => {
+  /**
+   * The last `limit` samples, at the model's sample rate.
+   *
+   * Copying only the tail matters more than it looks: the running transcript
+   * asks for this every second or so, and copying the whole recording each
+   * time meant a growing allocation on every tick for the whole sitting.
+   */
+  const snapshot = useCallback((limit = MAX_SAMPLES): Float32Array | null => {
     if (!total.current) return null
-    const all = new Float32Array(total.current)
+    const size = Math.min(total.current, limit)
+    const out = new Float32Array(size)
+    let skip = total.current - size
     let at = 0
     for (const chunk of chunks.current) {
-      all.set(chunk, at)
-      at += chunk.length
+      if (skip >= chunk.length) {
+        skip -= chunk.length
+        continue
+      }
+      const part = skip > 0 ? chunk.subarray(skip) : chunk
+      skip = 0
+      out.set(part, at)
+      at += part.length
     }
-    return all
+    return out
   }, [])
 
   const start = useCallback(async () => {
@@ -108,6 +132,11 @@ export function useRecorder() {
         if (out.length) {
           chunks.current.push(out)
           total.current += out.length
+          // Drop from the front rather than growing without limit.
+          while (total.current - chunks.current[0].length >= MAX_SAMPLES) {
+            total.current -= chunks.current[0].length
+            chunks.current.shift()
+          }
         }
       }
       source.connect(processor)

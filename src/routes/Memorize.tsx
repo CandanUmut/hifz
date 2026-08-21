@@ -8,7 +8,7 @@ import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import { useT } from '@/i18n'
 import { segmentWords } from '@/lib/text'
-import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
+import { meaningLines, resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { passageClass } from '@/lib/typography'
 import { useAudio } from '@/lib/useAudio'
 import { useSettings } from '@/state/settings'
@@ -136,6 +136,8 @@ export default function Memorize() {
     )
   }
 
+  // Never a lock, only a suggestion about which button is the obvious one.
+  const listenedEnough = step !== 'listen' || plays >= LISTEN_TIMES
   const hiddenStep = step === 'alone' || step === 'join' || step === 'whole'
   const shown =
     step === 'join'
@@ -200,7 +202,7 @@ export default function Memorize() {
         </p>
         <p className="mt-2 text-small text-ink-soft">{body}</p>
 
-        <div className="mt-8 space-y-6">
+        <div className="mt-8 flex flex-1 flex-col justify-center space-y-6">
           {shown.map((s) => (
             <div key={s.id}>
               {shown.length > 1 && <p className="label mb-1">{s.ref}</p>}
@@ -221,7 +223,11 @@ export default function Memorize() {
         {!hiddenStep && (
           <>
             <Transliteration line={translit} className="mt-4" />
-            {meaning.tr && <p className="meaning mt-3">{meaning.tr.text}</p>}
+            {meaningLines(meaning, settings).map((line) => (
+              <p key={line.title} className="meaning mt-3">
+                {line.text}
+              </p>
+            ))}
           </>
         )}
       </div>
@@ -230,14 +236,21 @@ export default function Memorize() {
         <div className="mx-auto max-w-column space-y-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {(step === 'listen' || step === 'along') && (
             <>
+              {/* Whichever button the step is actually asking for is the black
+                  one. Continue was the primary from the first frame, which
+                  reads as "skip this" on a screen that says listen first. */}
               {audio.playingIndex != null ? (
-                <button type="button" className="btn-secondary w-full py-3" onClick={audio.stop}>
+                <button
+                  type="button"
+                  className={`${listenedEnough ? 'btn-secondary' : 'btn-primary'} w-full py-3`}
+                  onClick={audio.stop}
+                >
                   ■ {t('text.stop')}
                 </button>
               ) : (
                 <button
                   type="button"
-                  className="btn-secondary w-full py-3"
+                  className={`${listenedEnough ? 'btn-secondary' : 'btn-primary'} w-full py-3`}
                   onClick={() => audio.playSegment(segment)}
                 >
                   ▶ {plays === 0 ? t('memorize.play') : t('memorize.replay')}
@@ -252,7 +265,11 @@ export default function Memorize() {
               {!audio.recorded && (
                 <p className="text-center text-micro text-ink-soft">{t('audio.browserVoice')}</p>
               )}
-              <button type="button" className="btn-primary w-full py-3" onClick={advance}>
+              <button
+                type="button"
+                className={`${listenedEnough ? 'btn-primary' : 'btn-secondary'} w-full py-3`}
+                onClick={advance}
+              >
                 {t('memorize.continue')}
               </button>
             </>

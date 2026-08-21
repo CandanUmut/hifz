@@ -230,3 +230,29 @@
     transition: none;
   }
 }
+
+/*
+ * The browser's own recogniser never hands over the samples, so there is no
+ * level to follow. It breathes instead — a microphone doing nothing must not
+ * look the same as a microphone that is listening.
+ */
+.recite-mic.is-idle {
+  animation: recite-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes recite-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--verified) / 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 0.7rem rgb(var(--verified) / 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recite-mic.is-idle {
+    animation: none;
+    box-shadow: 0 0 0 0.35rem rgb(var(--verified) / 0.16);
+  }
+}

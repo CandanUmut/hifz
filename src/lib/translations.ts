@@ -49,6 +49,29 @@ export function resolveMeaning(
 }
 
 /**
+ * The meanings to actually print, in reading order.
+ *
+ * Every screen used to reach for `meaning.tr` directly, which meant someone
+ * using the app in English read the Turkish translation under every ayah —
+ * and the two toggles that were supposed to control this were honoured on one
+ * screen out of four.
+ */
+export function meaningLines(
+  meaning: ResolvedMeaning,
+  settings: Pick<Settings, 'showTranslationTr' | 'showTranslationEn'>,
+): { text: string; title: string }[] {
+  const lines: { text: string; title: string }[] = []
+  if (settings.showTranslationTr && meaning.tr) lines.push(meaning.tr)
+  if (settings.showTranslationEn && meaning.en) lines.push(meaning.en)
+  // Asked for a translation, and the text has one in the other language only.
+  if (!lines.length && (settings.showTranslationTr || settings.showTranslationEn)) {
+    const only = meaning.tr ?? meaning.en
+    if (only) lines.push(only)
+  }
+  return lines
+}
+
+/**
  * The transliteration to print under a line. Falls back to whatever the text
  * carries so a pack without the preferred edition still shows something.
  */

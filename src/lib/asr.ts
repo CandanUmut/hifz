@@ -38,10 +38,35 @@ let loaded = false
 let nextId = 1
 const pending = new Map<number, Pending>()
 let onProgress: ((progress: LoadProgress) => void) | undefined
+let failLoad: ((error: Error) => void) | null = null
+
+/** Everything waiting is failed, and the next call starts a fresh worker. */
+function collapse(reason: string) {
+  const error = new Error(reason)
+  for (const p of pending.values()) p.reject(error)
+  pending.clear()
+  // The load promise has its own waiter, and leaving it unsettled would hang
+  // every screen that asked for the model rather than telling them it failed.
+  failLoad?.(error)
+  failLoad = null
+  ready = null
+  loaded = false
+  worker?.terminate()
+  worker = null
+}
 
 function ensureWorker(): Worker {
   if (worker) return worker
   const created = new Worker(new URL('./asr.worker.ts', import.meta.url), { type: 'module' })
+  /*
+   * A worker that runs out of memory dies without answering, and every call
+   * waiting on it would hang for ever — which on a phone is indistinguishable
+   * from the app being broken. Losing the worker is a reportable failure, and
+   * it is far better than losing the page: the model is heavy enough that
+   * loading it on the main thread takes the whole tab down with it.
+   */
+  created.onerror = () => collapse('the model stopped running on this device')
+  created.onmessageerror = () => collapse('the model sent something unreadable')
   created.onmessage = (event: MessageEvent) => {
     const message = event.data as {
       type: string
@@ -62,15 +87,11 @@ function ensureWorker(): Worker {
       return
     }
     if (message.type === 'error') {
-      const error = new Error(message.message ?? 'speech recognition failed')
       if (message.id != null) {
-        pending.get(message.id)?.reject(error)
+        pending.get(message.id)?.reject(new Error(message.message ?? 'speech recognition failed'))
         pending.delete(message.id)
       } else {
-        // A load failure: fail everyone waiting and let the next call retry.
-        for (const p of pending.values()) p.reject(error)
-        pending.clear()
-        ready = null
+        collapse(message.message ?? 'the model could not be loaded')
       }
     }
   }
@@ -85,17 +106,14 @@ export async function loadAsr(progress?: (p: LoadProgress) => void): Promise<voi
   if (!ready) {
     const instance = ensureWorker()
     ready = new Promise<void>((resolve, reject) => {
+      failLoad = reject
       const listener = (event: MessageEvent) => {
         const message = event.data as { type: string; id?: number; message?: string }
-        if (message.type === 'ready') {
-          instance.removeEventListener('message', listener)
-          loaded = true
-          resolve()
-        } else if (message.type === 'error' && message.id == null) {
-          instance.removeEventListener('message', listener)
-          ready = null
-          reject(new Error(message.message ?? 'the model could not be loaded'))
-        }
+        if (message.type !== 'ready') return
+        instance.removeEventListener('message', listener)
+        failLoad = null
+        loaded = true
+        resolve()
       }
       instance.addEventListener('message', listener)
       instance.postMessage({ type: 'load' })
@@ -129,14 +147,21 @@ export async function asrCached(): Promise<boolean> {
   }
 }
 
+/** Whisper reads thirty seconds at a time; older audio is never looked at. */
+const MAX_WINDOW = 30 * ASR_SAMPLE_RATE
+
 export async function transcribe(samples: Float32Array): Promise<string> {
   await loadAsr()
   const instance = ensureWorker()
   const id = nextId++
   return new Promise<string>((resolve, reject) => {
     pending.set(id, { resolve, reject })
-    // A copy, transferred: the caller keeps recording into its own buffer.
-    const copy = samples.slice()
+    /* A copy, transferred: the caller keeps recording into its own buffer.
+       Only the last thirty seconds — handing over more makes transformers.js
+       chunk the audio, which multiplies both the time and the memory for
+       nothing, since the line being checked is one ayah. */
+    const window = samples.length > MAX_WINDOW ? samples.subarray(samples.length - MAX_WINDOW) : samples
+    const copy = window.slice()
     instance.postMessage({ type: 'transcribe', id, samples: copy }, [copy.buffer])
   })
 }
