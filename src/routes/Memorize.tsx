@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { InkText } from '@/components/InkText'
 import { Transliteration } from '@/components/Transliteration'
 import { db } from '@/db/db'
-import { addToPlan, getSegments, promoteToReview } from '@/db/repo'
+import { addToPlan, getSegments, markStudied, promoteToReview } from '@/db/repo'
 import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import { useT } from '@/i18n'
@@ -86,6 +86,7 @@ export default function Memorize() {
       stage: 'review',
     })
     await promoteToReview(textId, indices)
+    await markStudied(textId, indices)
     goto('done')
   }, [data, goto, textId])
 

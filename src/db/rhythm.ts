@@ -19,7 +19,7 @@ export interface Day {
 
 export interface Rhythm {
   days: Day[]
-  /** Reviews graded since local midnight. */
+  /** Reviews graded, and lines learned, since local midnight. */
   todayCount: number
   /** Days out of the window with at least one review. */
   activeDays: number
@@ -48,10 +48,14 @@ export async function recentRhythm(window = 14, now = Date.now()): Promise<Rhyth
   ])
 
   const counts = new Map<string, number>()
-  for (const attempt of attempts) {
-    const key = localDate(attempt.at)
+  const bump = (at: number) => {
+    const key = localDate(at)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
+  for (const attempt of attempts) bump(attempt.at)
+  // A day spent learning a passage is a day you sat down, even if nothing was
+  // graded — the drill comes before the first review, not after it.
+  for (const item of items) if (item.studiedAt && item.studiedAt >= from) bump(item.studiedAt)
 
   const today = localDate(now)
   const days: Day[] = []

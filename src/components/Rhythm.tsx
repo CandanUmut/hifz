@@ -12,32 +12,29 @@ export function Rhythm({ data }: { data: RhythmData }) {
 
   return (
     <div className="card mb-4 px-4 py-3">
-      <div className="flex items-baseline gap-3">
-        <p className="me-auto text-small">
-          {data.todayCount > 0
-            ? t('rhythm.todayDone', { count: data.todayCount })
-            : t('rhythm.todayNone')}
-        </p>
-        {data.kept > 0 && (
-          <p className="text-micro text-ink-soft">{t('rhythm.kept', { count: data.kept })}</p>
-        )}
-      </div>
+      <p className="text-small">
+        {data.todayCount > 0
+          ? t('rhythm.todayDone', { count: data.todayCount })
+          : t('rhythm.todayNone')}
+      </p>
 
-      <div className="mt-2 flex items-end gap-[3px]" aria-hidden>
+      <div className="mt-2.5 flex items-end gap-[3px]" aria-hidden>
         {data.days.map((day) => (
           <span
             key={day.date}
-            className={`flex-1 rounded-full ${
-              day.count > 0 ? 'bg-verified' : 'bg-rule'
-            } ${day.today ? 'ring-1 ring-ink/40 ring-offset-2 ring-offset-[rgb(var(--paper-raised))]' : ''}`}
-            style={{
-              height: day.count > 0 ? `${6 + (day.count / busiest) * 14}px` : '4px',
-            }}
+            className={`flex-1 rounded-full ${day.count > 0 ? 'bg-verified' : 'bg-rule'}`}
+            /* Capped: a busy day is a taller mark, never a blob next to a rule. */
+            style={{ height: day.count > 0 ? `${5 + (day.count / busiest) * 7}px` : '4px' }}
           />
         ))}
       </div>
-      <p className="mt-2 text-micro text-ink-soft">
-        {t('rhythm.window', { days: data.activeDays, total: data.days.length })}
+
+      {/* One quiet line, so a fortnight with nothing in it is not a headline. */}
+      <p className="mt-2.5 text-micro text-ink-soft">
+        {data.activeDays > 0
+          ? t('rhythm.window', { days: data.activeDays, total: data.days.length })
+          : t('rhythm.windowEmpty')}
+        {data.kept > 0 && <> · {t('rhythm.kept', { count: data.kept })}</>}
       </p>
     </div>
   )

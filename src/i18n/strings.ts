@@ -307,16 +307,14 @@ export const STRINGS = {
   'memorize.reviewNow': { en: 'Review it now', tr: 'Şimdi tekrar et' },
 
   // --- rhythm --------------------------------------------------------------
-  'rhythm.todayDone': {
-    en: '{count} reviewed today. Good.',
-    tr: 'Bugün {count} tekrar yaptın. Güzel.',
-  },
+  'rhythm.todayDone': { en: '{count} done today. Good.', tr: 'Bugün {count} tane yaptın. Güzel.' },
   'rhythm.todayNone': { en: 'Nothing reviewed yet today.', tr: 'Bugün henüz tekrar yapmadın.' },
   'rhythm.kept': { en: '{count} lines kept', tr: 'Koruduğun {count} satır' },
   'rhythm.window': {
     en: 'You sat down on {days} of the last {total} days.',
     tr: 'Son {total} günün {days} gününde oturdun.',
   },
+  'rhythm.windowEmpty': { en: 'Today can be the first.', tr: 'İlk gün bugün olabilir.' },
 
   // --- playback ------------------------------------------------------------
   'audio.browserVoice': {
