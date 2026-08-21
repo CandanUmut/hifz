@@ -31,6 +31,12 @@ export function useRecorder() {
 
   useEffect(() => cleanup, [cleanup])
 
+  /** Everything captured so far, decodable on its own. */
+  const snapshot = useCallback((): Blob | null => {
+    if (!chunks.current.length) return null
+    return new Blob(chunks.current, { type: recorder.current?.mimeType || 'audio/webm' })
+  }, [])
+
   const start = useCallback(async () => {
     if (state === 'unsupported') return
     setState('requesting')
@@ -45,7 +51,9 @@ export function useRecorder() {
         if (event.data.size > 0) chunks.current.push(event.data)
       }
       recorder.current = rec
-      rec.start()
+      // A timeslice makes partial audio available while recording, which is
+      // what lets the interface show words as they are said.
+      rec.start(1000)
       setSeconds(0)
       timer.current = window.setInterval(() => setSeconds((s) => s + 1), 1000)
       setState('recording')
@@ -72,5 +80,5 @@ export function useRecorder() {
     return blob.size > 0 ? blob : null
   }, [cleanup])
 
-  return { state, seconds, start, stop }
+  return { state, seconds, start, stop, snapshot }
 }

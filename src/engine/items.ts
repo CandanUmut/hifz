@@ -1,6 +1,6 @@
 import { newId } from '@/db/db'
 import { newCard } from './scheduler'
-import type { Intent, ItemRecord, ItemType, SegmentRecord } from './types'
+import type { Intent, ItemRecord, ItemType, SegmentRecord, Stage } from './types'
 
 export interface ItemTypeChoice {
   block: boolean
@@ -17,6 +17,7 @@ function makeItem(
   type: ItemType,
   segment: SegmentRecord,
   intent: Intent,
+  stage: Stage,
   now: number,
   nextSegment?: SegmentRecord,
 ): ItemRecord {
@@ -27,6 +28,7 @@ function makeItem(
     segmentId: segment.id,
     nextSegmentId: nextSegment?.id,
     type,
+    stage,
     meaningDirection: type === 'meaning' ? 'to_meaning' : undefined,
     fsrs: card,
     due: card.due,
@@ -47,6 +49,7 @@ export interface GenerateInput {
   existing: ItemRecord[]
   types: ItemTypeChoice
   intent: Intent
+  stage: Stage
   now?: number
 }
 
@@ -65,6 +68,7 @@ export function generateItems({
   existing,
   types,
   intent,
+  stage,
   now = Date.now(),
 }: GenerateInput): ItemRecord[] {
   const byIndex = new Map(allSegments.map((s) => [s.index, s]))
@@ -84,9 +88,9 @@ export function generateItems({
   for (const index of [...selected].sort((a, b) => a - b)) {
     const segment = byIndex.get(index)
     if (!segment) continue
-    if (types.block) push(makeItem(textId, 'block', segment, intent, now))
+    if (types.block) push(makeItem(textId, 'block', segment, intent, stage, now))
     if (types.meaning && Object.keys(segment.translations).length > 0) {
-      push(makeItem(textId, 'meaning', segment, intent, now))
+      push(makeItem(textId, 'meaning', segment, intent, stage, now))
     }
   }
 
@@ -98,7 +102,7 @@ export function generateItems({
       const from = byIndex.get(index)
       const to = byIndex.get(index + 1)
       if (!from || !to) continue
-      push(makeItem(textId, 'link', from, intent, now, to))
+      push(makeItem(textId, 'link', from, intent, stage, now, to))
     }
   }
 

@@ -23,7 +23,7 @@ export interface SessionEntry {
   text: TextRecord
 }
 
-export type Phase = 'learn' | 'prompt' | 'answer' | 'done'
+export type Phase = 'prompt' | 'answer' | 'done'
 
 export interface AttemptDraft {
   peeks: number
@@ -52,7 +52,6 @@ interface SessionState {
   peek: () => void
   reveal: () => void
   markChecked: (errors: { wordIndex: number; kind: ErrorKind }[], heard?: string) => void
-  beginTest: () => void
   advance: (rating: GradeRating, updated: ItemRecord) => void
   reset: () => void
 }
@@ -90,12 +89,14 @@ function freshDraft(kind: SessionKind): AttemptDraft {
 }
 
 /**
- * Never seen before, so there is nothing to test yet — show it first. Practice
- * sessions skip this: the reader asked to be tested.
+ * Always straight to the test.
+ *
+ * Reviewing used to drop you into a lesson whenever it met an item you had not
+ * been taught yet. Asking to review and being handed study work is the app
+ * deciding for you. Studying is its own screen now, chosen deliberately.
  */
-function phaseFor(entry: SessionEntry, kind: SessionKind): Phase {
-  if (kind === 'cold') return 'prompt'
-  return entry.item.introducedAt == null ? 'learn' : 'prompt'
+function phaseFor(): Phase {
+  return 'prompt'
 }
 
 const EMPTY_DRAFT = freshDraft('review')
@@ -116,7 +117,7 @@ export const useSession = create<SessionState>()((set, get) => ({
       entries,
       marks: entries.map(() => 'pending' as MarkStatus),
       index: 0,
-      phase: entries.length ? phaseFor(entries[0], kind) : 'done',
+      phase: entries.length ? phaseFor() : 'done',
       mode: 'self_grade',
       draft: freshDraft(kind),
       passedFirstTime: 0,
@@ -130,8 +131,6 @@ export const useSession = create<SessionState>()((set, get) => ({
 
   markChecked: (errors, heard) =>
     set((s) => ({ draft: { ...s.draft, errors, heard, checked: true }, phase: 'answer' })),
-
-  beginTest: () => set({ phase: 'prompt' }),
 
   advance: (rating, updated) => {
     const { entries, index, marks, kind } = get()
@@ -154,7 +153,7 @@ export const useSession = create<SessionState>()((set, get) => ({
       entries: nextEntries,
       marks: nextMarks,
       index: nextIndex,
-      phase: phaseFor(nextEntries[nextIndex], kind),
+      phase: phaseFor(),
       mode: modeForItem(nextEntries[nextIndex].item, s.mode),
       draft: freshDraft(kind),
       passedFirstTime: s.passedFirstTime + firstTime,

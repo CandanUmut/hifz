@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { InkText } from '@/components/InkText'
 import { Transliteration } from '@/components/Transliteration'
 import { db } from '@/db/db'
-import { addToPlan, getSegments } from '@/db/repo'
+import { addToPlan, getSegments, promoteToReview } from '@/db/repo'
 import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import { useT } from '@/i18n'
@@ -78,7 +78,14 @@ export default function Memorize() {
     if (saved.current || !data) return
     saved.current = true
     const indices = data.segments.map((s) => s.index)
-    await addToPlan({ textId, indices, types: { ...DEFAULT_ITEM_TYPES, meaning: false } })
+    // Finishing the drill is what moves a passage into the review queue.
+    await addToPlan({
+      textId,
+      indices,
+      types: { ...DEFAULT_ITEM_TYPES, meaning: false },
+      stage: 'review',
+    })
+    await promoteToReview(textId, indices)
     goto('done')
   }, [data, goto, textId])
 

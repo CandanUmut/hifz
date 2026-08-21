@@ -172,6 +172,16 @@ export interface StoredCard {
   last_review?: number
 }
 
+/**
+ * Which list an item is on.
+ *
+ * Two lists, because they are two different activities. Studying is learning
+ * something new, and it takes as long as it takes. Reviewing is checking what
+ * you already learned. Mixing them meant that asking for a review handed you a
+ * lesson you did not ask for.
+ */
+export type Stage = 'study' | 'review'
+
 export interface ItemRecord {
   id: string
   textId: string
@@ -180,6 +190,7 @@ export interface ItemRecord {
   /** Link only: the segment the join arrives at. */
   nextSegmentId?: string
   type: ItemType
+  stage: Stage
   /** meaning items alternate direction across reviews. */
   meaningDirection?: 'to_meaning' | 'from_meaning'
   fsrs: StoredCard

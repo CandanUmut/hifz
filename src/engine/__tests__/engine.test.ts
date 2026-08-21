@@ -65,6 +65,7 @@ describe('item generation', () => {
       existing: [],
       types: { block: true, link: true, meaning: false },
       intent: 'learning',
+      stage: 'review',
     })
     expect(created.filter((i) => i.type === 'block')).toHaveLength(3)
     expect(created.filter((i) => i.type === 'link')).toHaveLength(2)
@@ -79,6 +80,7 @@ describe('item generation', () => {
       existing: [],
       types: { block: true, link: true, meaning: false },
       intent: 'learning',
+      stage: 'review',
     })
     expect(first.filter((i) => i.type === 'link')).toHaveLength(0)
 
@@ -90,6 +92,7 @@ describe('item generation', () => {
       existing: first,
       types: { block: true, link: true, meaning: false },
       intent: 'learning',
+      stage: 'review',
     })
     const link = second.find((i) => i.type === 'link')
     expect(link?.segmentId).toBe('t#0')
@@ -105,6 +108,7 @@ describe('item generation', () => {
       existing: [],
       types: { block: true, link: true, meaning: false },
       intent: 'learning',
+      stage: 'review',
     })
     const again = generateItems({
       textId: 't',
@@ -114,6 +118,7 @@ describe('item generation', () => {
       existing: first,
       types: { block: true, link: true, meaning: false },
       intent: 'learning',
+      stage: 'review',
     })
     expect(again).toHaveLength(0)
   })
@@ -127,6 +132,7 @@ describe('item generation', () => {
       existing: [],
       types: { block: false, link: false, meaning: true },
       intent: 'learning',
+      stage: 'review',
     })
     expect(created).toHaveLength(0)
   })
@@ -139,6 +145,7 @@ describe('scheduling and evidence', () => {
     textId: 't',
     segmentId: 't#0',
     type: 'block',
+    stage: 'review',
     fsrs: newCard(),
     due: Date.now(),
     intent: 'learning',
@@ -306,6 +313,7 @@ describe('transliteration', () => {
       existing: [],
       types: { block: false, link: false, meaning: true },
       intent: 'learning',
+      stage: 'review',
     })
     expect(created).toHaveLength(0)
   })

@@ -57,6 +57,7 @@ export default function AddText() {
           textId: text.id,
           indices: segments.map((_, i) => i),
           types: { ...types, meaning: false },
+          stage: 'study',
         })
       }
       navigate(`/text/${encodeURIComponent(text.id)}`)
