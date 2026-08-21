@@ -70,7 +70,7 @@ export default function InkLab() {
         <p className="mb-4 mt-1 text-small text-ink-soft">
           Tap any word: full ink for 1.8 s, then it re-fades. Peeks used: {peeks}
         </p>
-        <div className="card p-5">
+        <div className="card p-5" data-testid="peek-block">
           <InkText
             text={LONG}
             level={live}

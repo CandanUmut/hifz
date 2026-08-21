@@ -57,7 +57,12 @@ interface Prepared {
  * Longest common subsequence, with the matched pairs kept so the caller can
  * show which words actually differ rather than just how similar two lines are.
  */
-export function alignTokens(a: string[], b: string[]): Array<[number, number]> {
+export function alignTokens(
+  a: string[],
+  b: string[],
+  /** Defaults to exact equality; recitation passes a tolerant comparison. */
+  eq: (x: string, y: string) => boolean = (x, y) => x === y,
+): Array<[number, number]> {
   const n = a.length
   const m = b.length
   if (!n || !m) return []
@@ -66,14 +71,14 @@ export function alignTokens(a: string[], b: string[]): Array<[number, number]> {
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
       table[i][j] =
-        a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+        eq(a[i], b[j]) ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
     }
   }
   const pairs: Array<[number, number]> = []
   let i = 0
   let j = 0
   while (i < n && j < m) {
-    if (a[i] === b[j]) {
+    if (eq(a[i], b[j])) {
       pairs.push([i, j])
       i++
       j++

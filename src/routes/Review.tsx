@@ -145,7 +145,7 @@ function Room({ kind }: { kind: SessionKind }) {
   const [peekSignal, setPeekSignal] = useState(0)
   const [busy, setBusy] = useState(false)
   const interference = useInterference()
-  const audio = useAudio(entry?.text)
+  const audio = useAudio(entry?.text, entry ? [entry.segment, ...(entry.nextSegment ? [entry.nextSegment] : [])] : [])
 
   const answerSegment = entry
     ? entry.item.type === 'link'
@@ -372,10 +372,13 @@ function Room({ kind }: { kind: SessionKind }) {
                 <button type="button" className="btn-primary w-full py-3" onClick={reveal}>
                   {t('review.show')}
                 </button>
-                {settings.reciteEnabled && item.type !== 'meaning' && (
+                {/* Offered here, not hidden behind a settings toggle: nobody
+                    could tell the feature existed. Tapping it explains the
+                    one-time download before anything is fetched. */}
+                {item.type !== 'meaning' && (
                   <button
                     type="button"
-                    className="btn-text mt-1 w-full"
+                    className="btn-secondary mt-2 w-full py-3"
                     onClick={() => setMode('recite_asr')}
                   >
                     🎤 {t('review.recite')}

@@ -64,13 +64,19 @@ export interface Word {
 }
 
 export interface SegmentAudio {
-  /** ms offset into the text's audio file. */
+  /**
+   * One small file containing just this ayah. Preferred over seeking into the
+   * whole-surah file, which is approximate in an mp3 and started playback in
+   * the wrong place.
+   */
+  url?: string
+  /** ms offsets into the text's whole-surah file. */
   from: number
   to: number
   /**
-   * [wordIndex, from, to] in ms. Not positional — a reciter who repeats part of
-   * an ayah produces several spans for the same word, so each span carries the
-   * word it belongs to.
+   * [wordIndex, from, to] in ms, relative to this ayah's own `url`. Not
+   * positional — a reciter who repeats part of an ayah produces several spans
+   * for the same word, so each span carries the word it belongs to.
    */
   wordTimings?: [number, number, number][]
 }

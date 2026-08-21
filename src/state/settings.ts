@@ -22,6 +22,8 @@ export interface Settings {
   /** FSRS desired retention, 0.85–0.95. */
   desiredRetention: number
   dailyNewCap: number
+  /** How many ayah one memorisation sitting covers. */
+  memorizeBatch: number
   /** Remembered per user on the text detail page. */
   showTranslationTr: boolean
   showTranslationEn: boolean
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enEdition: 'clear-quran',
   desiredRetention: 0.9,
   dailyNewCap: 10,
+  memorizeBatch: 3,
   showTranslationTr: true,
   showTranslationEn: false,
   showTransliteration: true,
@@ -67,6 +70,16 @@ export const useSettings = create<SettingsStore>()(
     { name: 'hifz.settings', version: 1 },
   ),
 )
+
+/**
+ * Tells the document which language it is in.
+ *
+ * Not cosmetic: CSS `text-transform: uppercase` is language sensitive, and
+ * without this the Turkish label "Dinle" uppercased to DINLE instead of DİNLE.
+ */
+export function applyLang(lang: UiLang | null) {
+  document.documentElement.setAttribute('lang', lang ?? 'en')
+}
 
 /** Applies the theme choice to the document. Auto follows the OS. */
 export function applyTheme(choice: ThemeChoice) {

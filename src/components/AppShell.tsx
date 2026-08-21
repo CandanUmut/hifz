@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
-import { applyTheme, useSettings } from '@/state/settings'
+import { applyLang, applyTheme, useSettings } from '@/state/settings'
 import { useT } from '@/i18n'
 import { ServiceWorkerNotice } from './ServiceWorkerNotice'
 
@@ -13,10 +13,12 @@ const NAV = [
 
 export function AppShell() {
   const theme = useSettings((s) => s.theme)
+  const lang = useSettings((s) => s.lang)
   const { pathname } = useLocation()
   const t = useT()
 
   useEffect(() => applyTheme(theme), [theme])
+  useEffect(() => applyLang(lang), [lang])
 
   useEffect(() => {
     if (theme !== 'auto') return

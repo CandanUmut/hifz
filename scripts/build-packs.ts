@@ -33,6 +33,8 @@ const QURAN_QDC = 'https://api.quran.com/api/qdc'
 const QURAN_CDN = 'https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1'
 const ACIKKURAN = 'https://api.acikkuran.com'
 const AUDIO_HOST = 'https://download.quranicaudio.com'
+/** Per-ayah files live here, one small mp3 per verse. */
+const VERSE_AUDIO_HOST = 'https://verses.quran.com'
 
 const SCHEMA_VERSION = 1
 
@@ -189,7 +191,15 @@ export interface PackSegment {
   /** Keyed by transliteration edition id. Never a translation. */
   transliterations?: Record<string, string>
   words?: PackWord[]
-  audio?: { from: number; to: number; wordTimings?: [number, number, number][] }
+  audio?: {
+    /** One small file holding just this ayah. Nothing has to be seeked. */
+    url?: string
+    /** Offsets into the whole-surah file, for continuous playback. */
+    from: number
+    to: number
+    /** [wordIndex, from, to] in ms, relative to this ayah's own file. */
+    wordTimings?: [number, number, number][]
+  }
 }
 
 export interface PackText {
@@ -387,6 +397,32 @@ interface AudioFile {
   verse_timings: VerseTiming[]
 }
 
+/**
+ * One mp3 per ayah. Playing a verse out of the middle of a 13 MB surah file
+ * meant seeking, and seeking an mp3 is approximate: playback started in the
+ * wrong place and ran into the neighbouring verse. A file that contains only
+ * the ayah cannot do that.
+ */
+async function fetchVerseAudio(surah: number, reciterId: number): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  try {
+    const body = await getJson<{ audio_files: { verse_key: string; url: string }[] }>(
+      `${QURAN_API}/recitations/${reciterId}/by_chapter/${surah}?per_page=300`,
+      2,
+    )
+    for (const file of body.audio_files ?? []) {
+      if (!file.url) continue
+      out.set(
+        file.verse_key,
+        file.url.startsWith('http') ? file.url : `${VERSE_AUDIO_HOST}/${file.url.replace(/^\//, '')}`,
+      )
+    }
+  } catch (err) {
+    console.warn(`  per-ayah audio unavailable for surah ${surah}: ${String(err)}`)
+  }
+  return out
+}
+
 async function fetchAudio(surah: number, reciterId: number): Promise<AudioFile | null> {
   try {
     const body = await getJson<{ audio_files: AudioFile[] }>(
@@ -475,6 +511,7 @@ async function build(packKey: string) {
     if (!chapter) throw new Error(`no chapter metadata for ${surah}`)
     const verses = await fetchVerses(surah)
     const audio = wantAudio ? await fetchAudio(surah, reciterId) : null
+    const verseAudio = wantAudio ? await fetchVerseAudio(surah, reciterId) : new Map<string, string>()
     const timings = new Map(audio?.verse_timings.map((t) => [t.verse_key, t]) ?? [])
 
     const segments: PackSegment[] = verses.map((verse, index) => {
@@ -512,7 +549,7 @@ async function build(packKey: string) {
        * the index with each span keeps the highlight on the word being recited
        * even through a repeat.
        */
-      const wordTimings = timing?.segments
+      const rawTimings = timing?.segments
         ?.map((seg) => [seg[0] - 1, seg[1], seg[2]] as [number, number, number])
         .filter(
           ([index, from, to]) =>
@@ -523,6 +560,19 @@ async function build(packKey: string) {
             Number.isFinite(to) &&
             to > from,
         )
+
+      /*
+       * Rebase onto the ayah's own file. The per-ayah mp3 begins at the first
+       * word, not at the verse boundary the surah file uses — measured on
+       * 112:1-4, where the file length matches the word span to within 10 ms.
+       */
+      const firstWordStart = rawTimings?.length
+        ? Math.min(...rawTimings.map(([, start]) => start))
+        : 0
+      const wordTimings = rawTimings?.map(
+        ([index, start, end]) =>
+          [index, start - firstWordStart, end - firstWordStart] as [number, number, number],
+      )
 
       /*
        * The per-word text carries pause and tajwid marks that the verse-level
@@ -543,13 +593,15 @@ async function build(packKey: string) {
         translations,
         transliterations: Object.keys(transliterations).length ? transliterations : undefined,
         words: words.length ? words : undefined,
-        audio: timing
-          ? {
-              from: timing.timestamp_from,
-              to: timing.timestamp_to,
-              wordTimings: wordTimings?.length ? wordTimings : undefined,
-            }
-          : undefined,
+        audio:
+          timing || verseAudio.has(ref)
+            ? {
+                url: verseAudio.get(ref),
+                from: timing?.timestamp_from ?? 0,
+                to: timing?.timestamp_to ?? 0,
+                wordTimings: wordTimings?.length ? wordTimings : undefined,
+              }
+            : undefined,
       }
     })
 
@@ -592,7 +644,7 @@ async function build(packKey: string) {
   const manifest: PackManifest = {
     schema: SCHEMA_VERSION,
     id: def.id,
-    version: '1.2.0',
+    version: '1.3.0',
     builtAt: new Date().toISOString().slice(0, 10),
     title: def.title,
     subtitle: def.subtitle,

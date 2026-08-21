@@ -56,15 +56,15 @@ export function ServiceWorkerNotice() {
   return null
 }
 
+/**
+ * Deliberately in the flow rather than pinned to the bottom of the window: as a
+ * fixed bar it sat on top of the primary action on every screen that has one,
+ * so "Ready to work offline" was hiding "Start memorising".
+ */
 function Bar({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      role="status"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-rule bg-paper-raised"
-    >
-      <div className="mx-auto flex max-w-column items-center gap-2 px-5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-small">
-        {children}
-      </div>
+    <div role="status" className="mx-auto mt-8 max-w-column px-5">
+      <div className="card flex items-center gap-2 px-4 py-2 text-small">{children}</div>
     </div>
   )
 }
