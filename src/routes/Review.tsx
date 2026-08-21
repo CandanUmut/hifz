@@ -20,7 +20,7 @@ import type { GradeRating } from '@/engine/scheduler'
 import { useT } from '@/i18n'
 import { resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { segmentWords, words as splitWords } from '@/lib/text'
-import { passageClass, passageClassSmall, wordClass } from '@/lib/typography'
+import { passageClass, passageClassSmall } from '@/lib/typography'
 import { useAudio } from '@/lib/useAudio'
 import { useInterference } from '@/lib/useInterference'
 import { useSettings } from '@/state/settings'
@@ -138,7 +138,7 @@ function Room({ kind }: { kind: SessionKind }) {
   const navigate = useNavigate()
   const settings = useSettings()
   const t = useT()
-  const { entries, marks, index, phase, mode, draft, setMode, peek, reveal, markChecked, beginTest, advance } =
+  const { entries, marks, index, phase, mode, draft, setMode, peek, reveal, markChecked, advance } =
     useSession()
 
   const entry = entries[index]
@@ -200,8 +200,7 @@ function Room({ kind }: { kind: SessionKind }) {
       if (target && /input|textarea/i.test(target.tagName)) return
       if (e.key === ' ' && phase !== 'answer') {
         e.preventDefault()
-        if (phase === 'learn') beginTest()
-        else reveal()
+        reveal()
       }
       if ((e.key === 'p' || e.key === 'P') && peekable && phase === 'prompt') {
         e.preventDefault()
@@ -210,7 +209,7 @@ function Room({ kind }: { kind: SessionKind }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [beginTest, peekable, phase, reveal])
+  }, [peekable, phase, reveal])
 
   if (!entry || !answerSegment) return null
 
@@ -246,22 +245,10 @@ function Room({ kind }: { kind: SessionKind }) {
         </div>
       </header>
 
-      <div
-        className={[
-          'mx-auto flex max-w-column flex-col px-5 pt-8',
-          phase === 'learn' ? 'pb-16' : 'min-h-[calc(100dvh-4.25rem)] justify-center pb-52',
-        ].join(' ')}
-      >
-        {phase === 'learn' ? (
-          <LearnPane
-            entry={entry}
-            segment={answerSegment}
-            meaning={meaning}
-            translit={translit}
-            audio={audio}
-            onReady={beginTest}
-          />
-        ) : (
+      <div className="mx-auto flex min-h-[calc(100dvh-4.25rem)] max-w-column flex-col justify-center px-5 pb-48 pt-6">
+        {/* One framed area holds whatever is being asked, so the screen has a
+            subject instead of text floating in the middle of nothing. */}
+        <div className="card flex min-h-[38vh] flex-col justify-center px-5 py-6">
           <>
             {/* Context for a join: the tail of the line before it. */}
             {item.type === 'link' && (
@@ -315,7 +302,9 @@ function Room({ kind }: { kind: SessionKind }) {
                   errorWordIndices={showAnswer ? draft.errors.map((e) => e.wordIndex) : undefined}
                 />
                 {!showAnswer && (
-                  <p className="mt-6 text-small text-ink-soft">{t('review.recallPrompt')}</p>
+                  <p className="mt-6 border-t border-rule pt-4 text-micro text-ink-soft">
+                    {t('review.recallPrompt')}
+                  </p>
                 )}
               </>
             )}
@@ -339,15 +328,35 @@ function Room({ kind }: { kind: SessionKind }) {
               </>
             )}
           </>
-        )}
+        </div>
       </div>
 
-      {phase !== 'learn' && (
+      {(
         <footer className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
           <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            {showAnswer ? (
+            {showAnswer && draft.checked && draft.errors.length === 0 ? (
+              /*
+               * A clean recitation is an answer. Sending someone who just
+               * recited the ayah correctly to a "did you remember it?" screen
+               * is asking a question that was already answered out loud.
+               */
               <>
-                <p className="mb-2 text-center text-base">{t('review.didYouRemember')}</p>
+                <p className="mb-2 text-center text-base text-verified">
+                  ✓ {t('review.recitedWell')}
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary w-full py-3"
+                  onClick={() => grade(3)}
+                >
+                  {t('review.next')}
+                </button>
+              </>
+            ) : showAnswer ? (
+              <>
+                <p className="mb-2 text-center text-base">
+                  {draft.checked ? t('review.recitedPartly') : t('review.didYouRemember')}
+                </p>
                 <GradeButtons capped={capped} onGrade={grade} />
                 <p className="mt-2 text-center text-micro text-ink-soft">
                   {capped ? t('review.easyOffAfterPeek') : t('review.gradeHint')}
@@ -396,72 +405,6 @@ function Room({ kind }: { kind: SessionKind }) {
           </div>
         </footer>
       )}
-    </div>
-  )
-}
-
-// --- panes -----------------------------------------------------------------
-
-function LearnPane({
-  entry,
-  segment,
-  meaning,
-  translit,
-  audio,
-  onReady,
-}: {
-  entry: SessionEntry
-  segment: SegmentRecord
-  meaning: ReturnType<typeof resolveMeaning>
-  translit: ReturnType<typeof resolveTransliteration>
-  audio: ReturnType<typeof useAudio>
-  onReady: () => void
-}) {
-  const { text } = entry
-  const t = useT()
-  return (
-    <div>
-      <p className="label mb-4">{t('review.learnTitle')}</p>
-      <InkText
-        text={segment.content}
-        words={segmentWords(segment)}
-        level={0}
-        dir={text.dir}
-        lang={text.lang}
-        className={passageClass(text)}
-        activeWordIndex={audio.playingIndex != null ? audio.activeWord : null}
-      />
-      <Transliteration line={translit} className="mt-3" />
-      {meaning.tr && <p className="meaning mt-5">{meaning.tr.text}</p>}
-      {meaning.en && <p className="meaning mt-2">{meaning.en.text}</p>}
-
-      {audio.available && segment.audio && (
-        <button type="button" className="btn-secondary mt-6" onClick={() => audio.playSegment(segment)}>
-          {audio.playingIndex != null ? `■ ${t('text.stop')}` : `▶ ${t('text.play')}`}
-        </button>
-      )}
-
-      {segment.words && segment.words.length > 0 && (
-        <div className="mt-8">
-          <p className="label mb-2">{t('text.words')}</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-3" dir={text.dir}>
-            {segment.words.map((w, i) => (
-              <span key={i} className="text-center">
-                <span className={`block ${wordClass(text)}`}>{w.ar}</span>
-                {w.translit && (
-                  <span className="block text-micro text-ink-soft" dir="ltr">
-                    {w.translit}
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <button type="button" className="btn-primary mt-10 w-full py-3" onClick={onReady}>
-        {t('review.ready')}
-      </button>
     </div>
   )
 }

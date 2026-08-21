@@ -30,6 +30,21 @@ export class HifzDB extends Dexie {
       evidence: 'id, itemId, at',
       coldChecks: 'id, at',
     })
+
+    // Everything that already existed was in the review queue, so that is
+    // where it stays; nobody's schedule changes underneath them.
+    this.version(2)
+      .stores({
+        items: 'id, textId, segmentId, type, due, intent, stage, [textId+type], [textId+stage]',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('items')
+          .toCollection()
+          .modify((item) => {
+            item.stage = 'review'
+          }),
+      )
   }
 }
 

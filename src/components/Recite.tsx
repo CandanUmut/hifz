@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
-import { InkText } from './InkText'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { asrCached, ASR_MODEL_MB, decodeToSamples, loadAsr, transcribe } from '@/lib/asr'
 import { checkRecitation, suggestedRating, type RecitationCheck } from '@/engine/recitation'
 import { useT } from '@/i18n'
@@ -8,10 +7,17 @@ import type { GradeRating } from '@/engine/scheduler'
 
 type Phase = 'checking_cache' | 'need_model' | 'loading' | 'ready' | 'thinking' | 'done'
 
+/** How often the running transcript catches up while you are still speaking. */
+const INTERIM_MS = 1800
+
 /**
- * Recite the line out loud; the app listens here on the device and shows what
- * it heard against what it expected. It suggests nothing louder than a diff —
- * recognition mishears, and a machine's mistake must not become a lapse.
+ * Recite out loud and watch the words light up as they are heard.
+ *
+ * Showing nothing until the very end was the problem: you could not tell
+ * whether the microphone was working, whether it had understood you, or why it
+ * disagreed. Now the expected words fill in as they are recognised and the raw
+ * transcript runs underneath, so the check is something you can watch rather
+ * than a verdict handed down at the end.
  */
 export function Recite({
   expectedWords,
@@ -26,7 +32,6 @@ export function Recite({
   lang?: string
   passageClassName: string
   onChecked: (check: RecitationCheck, suggested: GradeRating) => void
-  /** Back out to plain self-checking without leaving the card. */
   onCancel?: () => void
 }) {
   const recorder = useRecorder()
@@ -34,9 +39,10 @@ export function Recite({
   const [phase, setPhase] = useState<Phase>('checking_cache')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [check, setCheck] = useState<RecitationCheck | null>(null)
+  const [live, setLive] = useState<RecitationCheck | null>(null)
+  const busy = useRef(false)
+  const timer = useRef<number | null>(null)
 
-  // Second time round the model is already here, so skip the warning.
   useEffect(() => {
     let cancelled = false
     asrCached().then((cached) => {
@@ -61,23 +67,65 @@ export function Recite({
     }
   }, [t])
 
+  const transcribeSnapshot = useCallback(
+    async (blob: Blob) => {
+      const samples = await decodeToSamples(blob)
+      const heard = await transcribe(samples)
+      return checkRecitation(heard, expectedWords)
+    },
+    [expectedWords],
+  )
+
+  /* Whisper is not a streaming model, so the running transcript is the whole
+     recording so far, re-read every couple of seconds. It trails your voice by
+     a second or two rather than keeping up with it word by word. */
+  const pollInterim = useCallback(async () => {
+    if (busy.current) return
+    const blob = recorder.snapshot()
+    if (!blob || blob.size < 2000) return
+    busy.current = true
+    try {
+      setLive(await transcribeSnapshot(blob))
+    } catch {
+      /* a partial chunk may not decode yet; the next tick will */
+    } finally {
+      busy.current = false
+    }
+  }, [recorder, transcribeSnapshot])
+
+  useEffect(() => {
+    if (recorder.state !== 'recording') {
+      if (timer.current) window.clearInterval(timer.current)
+      timer.current = null
+      return
+    }
+    timer.current = window.setInterval(() => void pollInterim(), INTERIM_MS)
+    return () => {
+      if (timer.current) window.clearInterval(timer.current)
+      timer.current = null
+    }
+  }, [pollInterim, recorder.state])
+
+  const begin = useCallback(async () => {
+    setLive(null)
+    setError(null)
+    await recorder.start()
+  }, [recorder])
+
   const finish = useCallback(async () => {
     const blob = await recorder.stop()
     if (!blob) return
     setPhase('thinking')
-    setError(null)
     try {
-      const samples = await decodeToSamples(blob)
-      const heard = await transcribe(samples)
-      const result = checkRecitation(heard, expectedWords)
-      setCheck(result)
+      const result = await transcribeSnapshot(blob)
+      setLive(result)
       setPhase('done')
       onChecked(result, suggestedRating(result))
     } catch {
       setError(t('recite.failed'))
       setPhase('ready')
     }
-  }, [expectedWords, onChecked, recorder, t])
+  }, [onChecked, recorder, t, transcribeSnapshot])
 
   const back = onCancel && (
     <button type="button" className="btn-text px-0 text-micro" onClick={onCancel}>
@@ -94,6 +142,10 @@ export function Recite({
     )
   }
 
+  const heardSet = new Set(
+    live ? live.expectedWords.map((_, i) => i).filter((i) => !live.missing.includes(i)) : [],
+  )
+
   return (
     <div>
       {phase === 'checking_cache' && <p className="text-small text-ink-soft">{t('common.loading')}</p>}
@@ -101,82 +153,75 @@ export function Recite({
       {phase === 'need_model' && (
         <div>
           <p className="text-small text-ink-soft">{t('recite.needModel', { mb: ASR_MODEL_MB })}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button type="button" className="btn-secondary" onClick={fetchModel}>
-              {t('recite.download')}
-            </button>
-            {back}
-          </div>
+          <button type="button" className="btn-primary mt-3 w-full py-3" onClick={fetchModel}>
+            {t('recite.download')}
+          </button>
+          <div className="mt-1 text-center">{back}</div>
         </div>
       )}
 
       {phase === 'loading' && (
         <div>
           <p className="text-small text-ink-soft">{t('recite.downloading', { percent: progress })}</p>
-          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-rule">
-            <div className="h-full bg-ink transition-[width]" style={{ width: `${progress}%` }} />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-rule">
+            <div
+              className="h-full rounded-full bg-verified transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
       )}
 
-      {phase === 'ready' && (
+      {(phase === 'ready' || phase === 'thinking' || phase === 'done') && (
         <div>
-          {recorder.state === 'recording' ? (
+          {/* The line, filling in word by word as it is recognised. */}
+          {(live || recorder.state === 'recording') && (
+            <div className="mb-3">
+              <p dir={dir} lang={lang} className={`${passageClassName} leading-relaxed`}>
+                {expectedWords.map((word, i) => (
+                  <span
+                    key={i}
+                    className={
+                      heardSet.has(i)
+                        ? 'text-verified transition-colors'
+                        : 'text-ink-soft/30 transition-colors'
+                    }
+                  >
+                    {word}{' '}
+                  </span>
+                ))}
+              </p>
+              <p dir={dir} lang={lang} className="mt-2 min-h-[1.5em] text-small text-ink-soft">
+                {live?.heard || (recorder.state === 'recording' ? '…' : '')}
+              </p>
+              {live && (
+                <p className="mt-1 text-micro text-ink-soft">
+                  {Math.round(live.score * 100)}%
+                </p>
+              )}
+            </div>
+          )}
+
+          {phase === 'thinking' ? (
+            <p className="text-small text-ink-soft" aria-live="polite">
+              {t('recite.thinking')}
+            </p>
+          ) : recorder.state === 'recording' ? (
             <button type="button" className="btn-primary w-full py-3" onClick={finish}>
-              ■ {t('recite.stop')}
+              ■ {t('recite.stop')} · {recorder.seconds}s
             </button>
-          ) : (
-            <button type="button" className="btn-primary w-full py-3" onClick={recorder.start}>
+          ) : phase === 'done' ? null : (
+            <button type="button" className="btn-primary w-full py-3" onClick={begin}>
               🎤 {t('recite.start')}
             </button>
           )}
-          <div className="mt-1 flex items-center justify-between gap-3">
-            {back}
-            {recorder.state === 'recording' && (
-              <span className="text-micro text-ink-soft" aria-live="polite">
-                {t('recite.listening', { seconds: recorder.seconds })}
-              </span>
-            )}
-          </div>
+
+          {phase !== 'done' && recorder.state !== 'recording' && (
+            <div className="mt-1 text-center">{back}</div>
+          )}
           {recorder.state === 'denied' && (
             <p className="mt-2 text-small text-correction">{t('recite.denied')}</p>
           )}
-        </div>
-      )}
-
-      {phase === 'thinking' && (
-        <p className="text-small text-ink-soft" aria-live="polite">
-          {t('recite.thinking')}
-        </p>
-      )}
-
-      {phase === 'done' && check && (
-        <div>
-          <p className="label mb-2">
-            {check.missing.length === 0
-              ? `${t('recite.allHeard')} · ${Math.round(check.score * 100)}%`
-              : `${t(check.missing.length === 1 ? 'recite.missed' : 'recite.missedPlural', {
-                  count: check.missing.length,
-                })} · ${Math.round(check.score * 100)}%`}
-          </p>
-          <InkText
-            text={check.expectedWords.join(' ')}
-            words={check.expectedWords}
-            level={0}
-            dir={dir}
-            lang={lang}
-            className={passageClassName}
-            errorWordIndices={check.missing}
-          />
-          {/* What it heard, in full and in the same script — you cannot judge
-              the check without seeing this, and it used to be a footnote. */}
-          <div className="mt-3 rounded-md border border-rule bg-paper-raised p-3">
-            <p className="label mb-1">{t('recite.heard')}</p>
-            <p dir={dir} lang={lang} className={check.heard ? passageClassName : 'text-small text-ink-soft'}>
-              {check.heard || t('recite.heardNothing')}
-            </p>
-          </div>
-          <p className="mt-2 text-micro text-ink-soft">{t('recite.notAJudge')}</p>
         </div>
       )}
 

@@ -121,11 +121,6 @@ export default function Settings() {
       </Group>
 
       <Group title={t('settings.reciteGroup')}>
-        <Check
-          checked={settings.reciteEnabled}
-          onChange={(v) => set('reciteEnabled', v)}
-          label={t('settings.reciteEnable')}
-        />
         <Note>{t('settings.reciteNote', { mb: ASR_MODEL_MB })}</Note>
       </Group>
 

@@ -93,12 +93,13 @@ export default function TextDetail() {
   }, [data])
 
   const add = useCallback(
-    async (indices: number[]) => {
+    async (indices: number[], stage: 'study' | 'review') => {
       if (!data || !indices.length) return
       await addToPlan({
         textId: data.text.id,
         indices,
         types: { ...DEFAULT_ITEM_TYPES, meaning: includeMeaning && hasMeaning(data.segments) },
+        stage,
       })
       setSelection(new Set())
     },
@@ -135,11 +136,21 @@ export default function TextDetail() {
     .filter((i) => i.lastEvidence)
     .sort((a, b) => (b.lastEvidence?.at ?? 0) - (a.lastEvidence?.at ?? 0))[0]?.lastEvidence
 
-  // The next few ayah not yet in the plan — the goal for this sitting.
-  const nextToLearn = segments
-    .map((s) => s.index)
-    .filter((index) => !plannedIndices.has(index))
-    .slice(0, settings.memorizeBatch)
+  const indexById = new Map(segments.map((s) => [s.id, s.index]))
+  const studyIndices = new Set(
+    items.filter((i) => i.stage === 'study').map((i) => indexById.get(i.segmentId)),
+  )
+  const reviewIndices = new Set(
+    items.filter((i) => i.stage === 'review').map((i) => indexById.get(i.segmentId)),
+  )
+  const unlisted = segments.map((s) => s.index).filter((index) => !plannedIndices.has(index))
+  const selected = [...selection].sort((a, b) => a - b)
+
+  // What a study sitting would cover: whatever is on the study list, or the
+  // next few that are on neither list.
+  const studyBatch = (studyIndices.size > 0
+    ? [...studyIndices].filter((i): i is number => i != null).sort((a, b) => a - b)
+    : unlisted.slice(0, settings.memorizeBatch))
 
   const toggle = (index: number) =>
     setSelection((prev) => {
@@ -240,7 +251,7 @@ export default function TextDetail() {
             planned={plannedIndices.has(segment.index)}
             selected={selection.has(segment.index)}
             onToggle={() => toggle(segment.index)}
-            onAdd={() => add([segment.index])}
+            onAdd={() => add([segment.index], 'study')}
             glossOpen={openGloss === segment.index}
             onGloss={() => setOpenGloss((v) => (v === segment.index ? null : segment.index))}
             twins={interference.resolve(segment.id)}
@@ -283,8 +294,15 @@ export default function TextDetail() {
       {/* One primary action, thumb-reachable. */}
       <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
         <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <p className="mb-2 text-center text-micro text-ink-soft">
+            {selection.size > 0
+              ? t('text.selected', { count: selection.size })
+              : plannedIndices.size === 0
+                ? t('text.notAddedYet')
+                : `${t('text.onStudyList', { count: studyIndices.size })} · ${t('text.onReviewList', { count: reviewIndices.size })}`}
+          </p>
           {hasMeaning(segments) && (
-            <label className="mb-2 flex items-center gap-2 text-micro text-ink-soft">
+            <label className="mb-2 flex items-center justify-center gap-2 text-micro text-ink-soft">
               <input
                 type="checkbox"
                 checked={includeMeaning}
@@ -295,55 +313,71 @@ export default function TextDetail() {
             </label>
           )}
           <div className="flex items-center gap-3">
-          <p className="me-auto text-micro text-ink-soft">
-            {selection.size > 0
-              ? t('text.selected', { count: selection.size })
-              : t('text.inPlanCount', { done: plannedIndices.size, total: segments.length })}
-            {plannedIndices.size > 0 && nextToLearn.length > 0 && (
+          {/*
+            Two lists, two buttons, and never a decision made on the reader's
+            behalf. Selecting ayah changes what the buttons add; selecting
+            nothing means the whole surah.
+          */}
+          {selected.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className="ms-2 underline underline-offset-2"
-                onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
+                className="btn-secondary"
+                onClick={() => add(selected, 'study')}
               >
-                {t('text.practise')}
+                {t('text.addToStudy', { count: selected.length })}
               </button>
-            )}
-          </p>
-          {selection.size > 0 ? (
-            /* An explicit selection goes straight into the drill. */
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                const picked = [...selection].sort((a, b) => a - b)
-                navigate(
-                  `/memorize?text=${encodeURIComponent(text.id)}&from=${picked[0]}&to=${picked[picked.length - 1]}`,
-                )
-              }}
-            >
-              {t('memorize.cta')}
-            </button>
-          ) : nextToLearn.length > 0 ? (
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() =>
-                navigate(
-                  `/memorize?text=${encodeURIComponent(text.id)}&from=${nextToLearn[0]}&to=${nextToLearn[nextToLearn.length - 1]}`,
-                )
-              }
-            >
-              {plannedIndices.size === 0 ? t('memorize.cta') : t('memorize.ctaMore')}
-            </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => add(selected, 'review')}
+              >
+                {t('text.addToReview', { count: selected.length })}
+              </button>
+            </div>
           ) : (
-            /* Practice ignores due dates — asking for a surah should never be refused. */
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
-            >
-              {t('text.practise')}
-            </button>
+            <>
+              {unlisted.length > 0 && (
+                <div className="mb-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+                  <button
+                    type="button"
+                    className="text-micro text-ink-soft underline underline-offset-2 hover:text-ink"
+                    onClick={() => add(unlisted, 'study')}
+                  >
+                    {t('text.addAllToStudy')}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-micro text-ink-soft underline underline-offset-2 hover:text-ink"
+                    onClick={() => add(unlisted, 'review')}
+                  >
+                    {t('text.addAllToReview')}
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={studyBatch.length === 0}
+                  onClick={() =>
+                    navigate(
+                      `/memorize?text=${encodeURIComponent(text.id)}&from=${studyBatch[0]}&to=${studyBatch[studyBatch.length - 1]}`,
+                    )
+                  }
+                >
+                  {t('text.study', { count: studyBatch.length })}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={reviewIndices.size === 0}
+                  onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
+                >
+                  {t('text.reviewNow', { count: reviewIndices.size })}
+                </button>
+              </div>
+            </>
           )}
           </div>
         </div>

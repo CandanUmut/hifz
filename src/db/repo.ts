@@ -6,6 +6,7 @@ import {
 import { generateItems, type ItemTypeChoice } from '@/engine/items'
 import { daysSince, isPass, schedule, type GradeRating } from '@/engine/scheduler'
 import type {
+  Stage,
   AttemptRecord,
   ErrorKind,
   EvidenceRecord,
@@ -105,6 +106,8 @@ export interface AddToPlanInput {
   indices: number[]
   types: ItemTypeChoice
   intent?: Intent
+  /** Which list this lands on. Studying and reviewing are separate choices. */
+  stage: Stage
 }
 
 export async function addToPlan({
@@ -112,6 +115,7 @@ export async function addToPlan({
   indices,
   types,
   intent = 'learning',
+  stage,
 }: AddToPlanInput): Promise<number> {
   const [allSegments, existing] = await Promise.all([getSegments(textId), getItems(textId)])
   const byId = new Map(allSegments.map((s) => [s.id, s]))
@@ -126,9 +130,36 @@ export async function addToPlan({
     existing,
     types,
     intent,
+    stage,
   })
   if (created.length) await db.items.bulkPut(created)
   return created.length
+}
+
+/**
+ * Moves study items into the review queue. Called when a study drill finishes,
+ * and directly when someone says "just put this in my reviews".
+ */
+export async function promoteToReview(textId: string, indices?: number[]): Promise<number> {
+  const [segments, items] = await Promise.all([getSegments(textId), getItems(textId)])
+  const indexById = new Map(segments.map((s) => [s.id, s.index]))
+  const wanted = indices ? new Set(indices) : null
+  const moving = items.filter((item) => {
+    if (item.stage !== 'study') return false
+    if (!wanted) return true
+    const index = indexById.get(item.segmentId)
+    return index != null && wanted.has(index)
+  })
+  if (moving.length) {
+    await db.items.bulkPut(moving.map((item) => ({ ...item, stage: 'review' as const })))
+  }
+  return moving.length
+}
+
+/** Everything waiting to be studied, oldest first. */
+export async function studyItems(textId?: string): Promise<ItemRecord[]> {
+  const items = textId ? await getItems(textId) : await db.items.toArray()
+  return items.filter((i) => i.stage === 'study' && i.intent !== 'paused').sort(readingOrder)
 }
 
 export async function removeFromPlan(itemIds: string[]) {
@@ -181,7 +212,11 @@ export function readingOrder(a: ItemRecord, b: ItemRecord): number {
 }
 
 export async function buildQueue({ now = Date.now(), dailyNewCap, limit }: QueueOptions) {
-  const items = (await db.items.toArray()).filter((i) => i.intent !== 'paused')
+  // Only the review list. Study items are not due for anything; they are
+  // waiting for the reader to sit down with them.
+  const items = (await db.items.toArray()).filter(
+    (i) => i.intent !== 'paused' && i.stage === 'review',
+  )
   const introducedToday = items.filter(
     (i) => i.introducedAt != null && i.introducedAt >= startOfDay(now),
   ).length
@@ -208,6 +243,7 @@ export async function coldCheckCandidates(now = Date.now(), limit = 10) {
     .filter(
       (i) =>
         i.intent !== 'paused' &&
+        i.stage === 'review' &&
         i.lastSeenAt != null &&
         now - i.lastSeenAt >= 30 * DAY,
     )
