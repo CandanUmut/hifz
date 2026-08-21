@@ -16,10 +16,9 @@ const HEARD: Record<string, string> = {
 
 async function segmentFor(ref: string) {
   const [surah] = ref.split(':')
-  const dir = surah === '1' ? 'quran-al-fatiha' : 'quran-juz-amma'
   const file = `${String(surah).padStart(3, '0')}.json`
   const text = JSON.parse(
-    await readFile(path.resolve(process.cwd(), 'public/packs', dir, file), 'utf8'),
+    await readFile(path.resolve(process.cwd(), 'public/packs/quran', file), 'utf8'),
   )
   return text.segments.find((s: { ref: string }) => s.ref === ref)
 }

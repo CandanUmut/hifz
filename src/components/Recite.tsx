@@ -49,10 +49,13 @@ const MIN_SAMPLES = 11_000
 export function useRecitation({
   expectedWords,
   lang,
+  /** Changes when the passage does, which is what clears the last result. */
+  subject,
   onChecked,
 }: {
   expectedWords: string[]
   lang?: string
+  subject?: string
   onChecked: (check: RecitationCheck, suggested: GradeRating) => void
 }) {
   const recorder = useRecorder()
@@ -94,6 +97,24 @@ export function useRecitation({
   }, [engine, modelReady])
 
   useEffect(() => () => speech.current?.stop(), [])
+
+  /*
+   * A verdict belongs to the passage it was about.
+   *
+   * The panel lives in the review room, which does not remount between cards,
+   * so "I couldn't make that out" and its Try again / Continue buttons stayed
+   * on screen when the next ayah came up — the app telling you that you had
+   * failed a line you had not been asked yet.
+   */
+  useEffect(() => {
+    speech.current?.stop()
+    speech.current = null
+    heardText.current = ''
+    setLive(null)
+    setSilent(false)
+    setError(null)
+    setPhase((current) => (current === 'loading' ? current : 'idle'))
+  }, [subject])
 
   const fetchModel = useCallback(async () => {
     setPhase('loading')

@@ -45,6 +45,46 @@ export class HifzDB extends Dexie {
             item.stage = 'review'
           }),
       )
+
+    /*
+     * One pack for the whole muṣḥaf, and ids that no longer name a pack.
+     *
+     * There used to be three overlapping packs, so surah 112 was
+     * `quran-juz-amma:112` in one and `quran-all:112` in another, and progress
+     * made on one copy was invisible on the other. Ids are now `quran:112`,
+     * and anything already on this device is carried across rather than
+     * stranded — item ids are their own uuids, so only the text and segment
+     * references need rewriting.
+     */
+    this.version(3).upgrade(async (tx) => {
+      const rename = (id: string) =>
+        id.replace(/^quran-(juz-amma|al-fatiha|all):/, 'quran:')
+
+      const texts = await tx.table('texts').toArray()
+      for (const text of texts) {
+        const id = rename(text.id)
+        if (id === text.id) continue
+        await tx.table('texts').delete(text.id)
+        await tx.table('texts').put({ ...text, id, packId: 'quran' })
+      }
+
+      const segments = await tx.table('segments').toArray()
+      for (const segment of segments) {
+        const id = rename(segment.id)
+        if (id === segment.id) continue
+        await tx.table('segments').delete(segment.id)
+        await tx.table('segments').put({ ...segment, id, textId: rename(segment.textId) })
+      }
+
+      await tx
+        .table('items')
+        .toCollection()
+        .modify((item) => {
+          item.textId = rename(item.textId)
+          item.segmentId = rename(item.segmentId)
+          if (item.nextSegmentId) item.nextSegmentId = rename(item.nextSegmentId)
+        })
+    })
   }
 }
 

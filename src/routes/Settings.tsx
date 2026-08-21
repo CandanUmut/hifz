@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/db'
 import { deleteAll, exportAll } from '@/db/repo'
@@ -137,6 +138,14 @@ export default function Settings() {
 
       <Group title={t('settings.reciteGroup')}>
         <Note>{t('settings.reciteNote', { mb: ASR_MODEL_MB })}</Note>
+      </Group>
+
+      {/* The one place the sources and licences live, instead of under every
+          surah in the library. */}
+      <Group title={t('about.title')}>
+        <Link to="/about" className="btn-secondary">
+          {t('settings.about')}
+        </Link>
       </Group>
 
       <Group title={t('settings.pace')}>

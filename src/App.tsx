@@ -11,6 +11,8 @@ import NotFound from './routes/NotFound'
 import Progress from './routes/Progress'
 import Review from './routes/Review'
 import Settings from './routes/Settings'
+import About from './routes/About'
+import TestPassage from './routes/Test'
 import TextDetail from './routes/TextDetail'
 import Today from './routes/Today'
 
@@ -33,6 +35,7 @@ export default function App() {
       <Route path="/review" element={<Review kind="review" />} />
       <Route path="/practise" element={<Review kind="practice" />} />
       <Route path="/memorize" element={<Memorize />} />
+      <Route path="/test" element={<TestPassage />} />
       <Route path="/cold-check" element={<Review kind="cold" />} />
 
       <Route element={<AppShell />}>
@@ -42,6 +45,7 @@ export default function App() {
         <Route path="/add" element={<AddText />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/about" element={<About />} />
         <Route path="/design" element={<InkLab />} />
         <Route path="*" element={<NotFound />} />
       </Route>

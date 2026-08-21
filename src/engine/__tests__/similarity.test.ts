@@ -94,7 +94,7 @@ describe('over the shipped packs', () => {
     const ROOT = path.resolve(process.cwd(), 'public/packs')
     const segments: SegmentLike[] = []
     const label = new Map<string, string>()
-    for (const dir of ['quran-al-fatiha', 'quran-juz-amma']) {
+    for (const dir of ['quran']) {
       const manifest = JSON.parse(await readFile(path.join(ROOT, dir, 'pack.json'), 'utf8'))
       for (const t of manifest.texts) {
         const file = JSON.parse(await readFile(path.join(ROOT, dir, t.file), 'utf8'))
