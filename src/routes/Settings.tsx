@@ -4,7 +4,7 @@ import { db } from '@/db/db'
 import { deleteAll, exportAll } from '@/db/repo'
 import type { EditionInfo, TransliterationInfo } from '@/engine/types'
 import { useT } from '@/i18n'
-import { ASR_MODEL_MB } from '@/lib/asr'
+import { ASR_MODEL_MB } from '@/lib/asr-model'
 import { useInstallPrompt } from '@/lib/useInstallPrompt'
 import { useSettings, type ThemeChoice, type UiLang } from '@/state/settings'
 

@@ -120,11 +120,17 @@ export default function Memorize() {
   if (step === 'done') {
     return (
       <Centered>
-        <p className="text-display">{t('memorize.doneTitle', { range: rangeLabel })}</p>
+        <p className="text-base text-verified">{t('memorize.donePraise')}</p>
+        <p className="mt-2 text-display">{t('memorize.doneTitle', { range: rangeLabel })}</p>
         <p className="mt-3 text-small text-ink-soft">{t('memorize.doneBody')}</p>
-        <button type="button" className="btn-primary mt-8" onClick={() => navigate('/')}>
-          {t('review.backToToday')}
-        </button>
+        <div className="mt-8 flex w-full flex-col gap-2">
+          <button type="button" className="btn-primary py-3" onClick={() => navigate('/review')}>
+            {t('memorize.reviewNow')}
+          </button>
+          <button type="button" className="btn-secondary py-3" onClick={() => navigate('/')}>
+            {t('review.backToToday')}
+          </button>
+        </div>
       </Centered>
     )
   }
@@ -240,6 +246,10 @@ export default function Memorize() {
                 <p className="text-center text-micro text-ink-soft">
                   {t('memorize.playCount', { done: Math.min(plays, LISTEN_TIMES), total: LISTEN_TIMES })}
                 </p>
+              )}
+              {/* Say whose voice this is. A text you typed in has no reciter. */}
+              {!audio.recorded && (
+                <p className="text-center text-micro text-ink-soft">{t('audio.browserVoice')}</p>
               )}
               <button type="button" className="btn-primary w-full py-3" onClick={advance}>
                 {t('memorize.continue')}

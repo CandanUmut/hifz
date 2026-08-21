@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { addToPlan, createUserText } from '@/db/repo'
 import { DEFAULT_ITEM_TYPES, type ItemTypeChoice } from '@/engine/items'
 import { useT } from '@/i18n'
+import { useSettings } from '@/state/settings'
 import type { StringKey } from '@/i18n/strings'
 import {
   guessDirection,
@@ -35,6 +36,8 @@ export default function AddText() {
   const [types, setTypes] = useState<ItemTypeChoice>(DEFAULT_ITEM_TYPES)
   const [saving, setSaving] = useState(false)
   const t = useT()
+  // Null until the first-run language pick; English is the fallback there.
+  const uiLang = useSettings((state) => state.lang) ?? 'en'
 
   const auto = useMemo(
     () => segmentText(body, strategy, { wordsPerSegment }),
@@ -48,7 +51,13 @@ export default function AddText() {
     try {
       const text = await createUserText({
         title,
-        lang: lang || (resolvedDir === 'rtl' ? 'ar' : 'en'),
+        /*
+         * The language decides which voice reads the text aloud, so guessing
+         * English for someone using the app in Turkish means their own text
+         * comes back mispronounced. Their interface language is the better
+         * guess for something they typed themselves.
+         */
+        lang: lang || (resolvedDir === 'rtl' ? 'ar' : uiLang),
         dir: resolvedDir,
         segments: segments.map((content) => ({ content })),
       })
@@ -109,7 +118,7 @@ export default function AddText() {
               <input
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
-                placeholder={resolvedDir === 'rtl' ? 'ar' : 'en'}
+                placeholder={resolvedDir === 'rtl' ? 'ar' : uiLang}
                 className="mt-1 min-h-[44px] w-28 rounded-md border border-rule bg-paper-raised px-3
                   text-small"
               />

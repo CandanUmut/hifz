@@ -35,8 +35,9 @@
 @layer components {
   /* Bottom-anchored primary on mobile, inline on larger screens. */
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-4
-      text-small font-medium transition-colors;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4
+      text-small font-medium transition-[background-color,border-color,color,transform,box-shadow]
+      duration-150 active:scale-[0.985];
   }
   .btn-primary {
     @apply btn bg-ink text-paper hover:bg-ink/90 disabled:opacity-40;
@@ -54,9 +55,33 @@
     @apply border-rule;
   }
   .card {
-    @apply rounded-lg border border-rule bg-paper-raised;
+    @apply rounded-xl border border-rule bg-paper-raised;
+    /* A page laid on a page: enough lift to read as a surface, not a box. */
+    box-shadow: 0 1px 2px rgb(var(--ink) / 0.04), 0 8px 24px -16px rgb(var(--ink) / 0.18);
   }
   .label {
     @apply text-micro uppercase tracking-[0.08em] text-ink-soft;
+  }
+
+  /* Screens arrive rather than appearing. Barely there, but it settles the eye. */
+  .page-enter {
+    animation: page-enter 260ms var(--ink-fade-ease) both;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
   }
 }

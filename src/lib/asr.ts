@@ -1,4 +1,6 @@
-import type { AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers'
+import { ASR_CACHE, ASR_MODEL, ASR_MODEL_MB, ASR_SAMPLE_RATE } from './asr-model'
+
+export { ASR_MODEL, ASR_MODEL_MB, ASR_SAMPLE_RATE }
 
 /**
  * Recitation checking, entirely in the browser.
@@ -9,18 +11,13 @@ import type { AutomaticSpeechRecognitionPipeline } from '@huggingface/transforme
  * audio never leaves the device — but the model has to come down once, and
  * the interface says so before it starts.
  *
+ * The model itself lives in a worker; this file is only the way to it. Loading
+ * the library at all is deferred to the first request, so nothing of it
+ * reaches a reader who never turns recitation checking on.
+ *
  * Point VITE_ASR_HOST at your own copy of the model files to avoid the third
  * party entirely; see docs/RECITATION.md.
  */
-
-export const ASR_MODEL = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran'
-
-/**
- * Roughly, for the sentence shown before the download starts. Measured from
- * what the browser actually fetches: a ~23 MB encoder and a ~123 MB q4
- * decoder, plus the tokenizer.
- */
-export const ASR_MODEL_MB = 150
 
 export type AsrStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 
@@ -30,55 +27,89 @@ export interface LoadProgress {
   total: number
 }
 
-let pipe: AutomaticSpeechRecognitionPipeline | null = null
-let loading: Promise<AutomaticSpeechRecognitionPipeline> | null = null
+interface Pending {
+  resolve: (text: string) => void
+  reject: (error: Error) => void
+}
 
-/**
- * Loads the model, importing the library only at this point so none of it
- * lands in the bundle for readers who never turn recitation checking on.
- */
-export async function loadAsr(
-  onProgress?: (progress: LoadProgress) => void,
-): Promise<AutomaticSpeechRecognitionPipeline> {
-  if (pipe) return pipe
-  if (loading) return loading
+let worker: Worker | null = null
+let ready: Promise<void> | null = null
+let loaded = false
+let nextId = 1
+const pending = new Map<number, Pending>()
+let onProgress: ((progress: LoadProgress) => void) | undefined
 
-  loading = (async () => {
-    const { pipeline, env } = await import('@huggingface/transformers')
-
-    const host = import.meta.env.VITE_ASR_HOST
-    if (host) {
-      // A self-hosted copy: no third-party request at all.
-      env.remoteHost = host
-      env.remotePathTemplate = '{model}/'
+function ensureWorker(): Worker {
+  if (worker) return worker
+  const created = new Worker(new URL('./asr.worker.ts', import.meta.url), { type: 'module' })
+  created.onmessage = (event: MessageEvent) => {
+    const message = event.data as {
+      type: string
+      id?: number
+      text?: string
+      message?: string
+      file?: string
+      loaded?: number
+      total?: number
     }
-    const wasmPaths = import.meta.env.VITE_ASR_WASM
-    if (wasmPaths && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = wasmPaths
-    env.allowLocalModels = false
+    if (message.type === 'progress') {
+      onProgress?.({ file: message.file ?? '', loaded: message.loaded ?? 0, total: message.total ?? 0 })
+      return
+    }
+    if (message.type === 'text' && message.id != null) {
+      pending.get(message.id)?.resolve(message.text ?? '')
+      pending.delete(message.id)
+      return
+    }
+    if (message.type === 'error') {
+      const error = new Error(message.message ?? 'speech recognition failed')
+      if (message.id != null) {
+        pending.get(message.id)?.reject(error)
+        pending.delete(message.id)
+      } else {
+        // A load failure: fail everyone waiting and let the next call retry.
+        for (const p of pending.values()) p.reject(error)
+        pending.clear()
+        ready = null
+      }
+    }
+  }
+  worker = created
+  return created
+}
 
-    const created = (await pipeline('automatic-speech-recognition', ASR_MODEL, {
-      // q4 keeps the download near 140 MB rather than 230 MB.
-      dtype: { encoder_model: 'q4', decoder_model_merged: 'q4' },
-      progress_callback: (event: unknown) => {
-        const p = event as { status?: string; file?: string; loaded?: number; total?: number }
-        if (p.status === 'progress' && p.file) {
-          onProgress?.({ file: p.file, loaded: p.loaded ?? 0, total: p.total ?? 0 })
+/** Fetches the model if it is not here yet, reporting bytes as they arrive. */
+export async function loadAsr(progress?: (p: LoadProgress) => void): Promise<void> {
+  onProgress = progress
+  if (loaded) return
+  if (!ready) {
+    const instance = ensureWorker()
+    ready = new Promise<void>((resolve, reject) => {
+      const listener = (event: MessageEvent) => {
+        const message = event.data as { type: string; id?: number; message?: string }
+        if (message.type === 'ready') {
+          instance.removeEventListener('message', listener)
+          loaded = true
+          resolve()
+        } else if (message.type === 'error' && message.id == null) {
+          instance.removeEventListener('message', listener)
+          ready = null
+          reject(new Error(message.message ?? 'the model could not be loaded'))
         }
-      },
-    })) as AutomaticSpeechRecognitionPipeline
-    pipe = created
-    return created
-  })()
-
+      }
+      instance.addEventListener('message', listener)
+      instance.postMessage({ type: 'load' })
+    })
+  }
   try {
-    return await loading
+    await ready
   } finally {
-    loading = null
+    onProgress = undefined
   }
 }
 
 export function asrLoaded(): boolean {
-  return pipe !== null
+  return loaded
 }
 
 /**
@@ -87,10 +118,10 @@ export function asrLoaded(): boolean {
  * recitation" rather than "download 142 MB" the second time.
  */
 export async function asrCached(): Promise<boolean> {
-  if (pipe) return true
+  if (loaded) return true
   if (typeof caches === 'undefined') return false
   try {
-    const cache = await caches.open('transformers-cache')
+    const cache = await caches.open(ASR_CACHE)
     const keys = await cache.keys()
     return keys.some((request) => request.url.includes('decoder_model_merged'))
   } catch {
@@ -98,33 +129,14 @@ export async function asrCached(): Promise<boolean> {
   }
 }
 
-/**
- * The fine-tune has its language fixed in its own generation config, so
- * passing `language` or `task` here is rejected as an English-only model.
- */
 export async function transcribe(samples: Float32Array): Promise<string> {
-  const asr = await loadAsr()
-  const output = (await asr(samples)) as { text?: string } | Array<{ text?: string }>
-  const text = Array.isArray(output) ? output[0]?.text : output.text
-  return (text ?? '').trim()
-}
-
-/** Whisper wants mono 16 kHz. */
-export const ASR_SAMPLE_RATE = 16000
-
-export async function decodeToSamples(blob: Blob): Promise<Float32Array> {
-  const buffer = await blob.arrayBuffer()
-  const scratch = new OfflineAudioContext(1, 1, 44100)
-  const decoded = await scratch.decodeAudioData(buffer)
-  const target = new OfflineAudioContext(
-    1,
-    Math.max(1, Math.ceil(decoded.duration * ASR_SAMPLE_RATE)),
-    ASR_SAMPLE_RATE,
-  )
-  const source = target.createBufferSource()
-  source.buffer = decoded
-  source.connect(target.destination)
-  source.start()
-  const rendered = await target.startRendering()
-  return rendered.getChannelData(0)
+  await loadAsr()
+  const instance = ensureWorker()
+  const id = nextId++
+  return new Promise<string>((resolve, reject) => {
+    pending.set(id, { resolve, reject })
+    // A copy, transferred: the caller keeps recording into its own buffer.
+    const copy = samples.slice()
+    instance.postMessage({ type: 'transcribe', id, samples: copy }, [copy.buffer])
+  })
 }

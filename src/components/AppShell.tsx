@@ -63,7 +63,8 @@ export function AppShell() {
         </nav>
       </header>
 
-      <main id="main" className="mx-auto max-w-column px-5 pb-24 pt-6">
+      {/* Keyed on the route so each screen settles in rather than snapping. */}
+      <main id="main" key={pathname} className="page-enter mx-auto max-w-column px-5 pb-24 pt-6">
         <Outlet />
       </main>
 

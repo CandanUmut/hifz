@@ -90,4 +90,10 @@ export default defineConfig({
   base: './',
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
   build: { target: 'es2020' },
+  /*
+   * The speech worker imports transformers.js dynamically, which is a
+   * code-split build, and a code-split build cannot be an IIFE. Module workers
+   * are supported everywhere this app already needs — including iOS 16.4 up.
+   */
+  worker: { format: 'es' },
 })
