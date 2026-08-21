@@ -1,5 +1,5 @@
 import { alignTokens } from './similarity'
-import { foldArabic } from '@/lib/text'
+import { editDistance, foldArabic } from '@/lib/text'
 
 /**
  * Comparing what was recited with what should have been.
@@ -29,12 +29,24 @@ function normalise(word: string): string {
     .toLocaleLowerCase()
 }
 
+/**
+ * Two words count as the same if they read the same, or differ by a single
+ * letter in a word long enough for that to be spelling rather than memory.
+ * Transcripts and the mushaf disagree constantly on orthography, and marking
+ * those wrong is the app being wrong.
+ */
+export function sameWord(a: string, b: string): boolean {
+  if (a === b) return true
+  if (Math.min(a.length, b.length) < 4) return false
+  return editDistance(a, b, 1) <= 1
+}
+
 export function checkRecitation(heard: string, expectedWords: string[]): RecitationCheck {
   const heardWords = heard.split(/\s+/).filter(Boolean)
   const a = expectedWords.map(normalise).filter(Boolean)
   const b = heardWords.map(normalise).filter(Boolean)
 
-  const pairs = alignTokens(a, b)
+  const pairs = alignTokens(a, b, sameWord)
   const matchedExpected = new Set(pairs.map(([i]) => i))
   const matchedHeard = new Set(pairs.map(([, j]) => j))
 

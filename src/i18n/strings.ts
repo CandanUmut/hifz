@@ -99,6 +99,12 @@ export const STRINGS = {
   'text.selected': { en: '{count} selected', tr: '{count} seçildi' },
   'text.words': { en: 'Word by word', tr: 'Kelime kelime' },
   'text.play': { en: 'Listen', tr: 'Dinle' },
+  'text.playAll': { en: 'Listen to the whole surah', tr: 'Sureyi baştan sona dinle' },
+  'text.playFromHere': { en: 'Listen from here on', tr: 'Buradan itibaren dinle' },
+  'text.audioError': {
+    en: 'The recitation could not be played. Check your connection.',
+    tr: 'Okuyuş çalınamadı. Bağlantını kontrol et.',
+  },
   'text.stop': { en: 'Stop', tr: 'Dur' },
   'text.turkish': { en: 'Turkish', tr: 'Türkçe meal' },
   'text.english': { en: 'English', tr: 'İngilizce meal' },
@@ -107,6 +113,53 @@ export const STRINGS = {
   'text.alsoSchedule': { en: 'Also test me on the meaning', tr: 'Anlamını da sor' },
   'text.notOnDevice': { en: 'This text is not on this device.', tr: 'Bu metin bu cihazda yok.' },
   'text.backToLibrary': { en: 'Back to the library', tr: 'Kütüphaneye dön' },
+
+  // --- memorising ----------------------------------------------------------
+  'memorize.cta': { en: 'Start memorising', tr: 'Ezberlemeye başla' },
+  'memorize.ctaMore': { en: 'Memorise the next ones', tr: 'Sıradakileri ezberle' },
+  'memorize.allDone': { en: 'The whole surah is in your plan.', tr: 'Surenin tamamı listende.' },
+  'memorize.howMany': { en: 'How many ayah this session?', tr: 'Bu oturumda kaç ayet?' },
+  'memorize.goal': { en: 'Today’s goal: {range}', tr: 'Bugünkü hedef: {range}' },
+  'memorize.ayahOf': { en: 'Ayah {n} of {total}', tr: '{total} ayetten {n}.' },
+
+  'memorize.step.listen': { en: 'Listen', tr: 'Dinle' },
+  'memorize.step.listenBody': {
+    en: 'Play it three times and follow the words. Do not try to recite yet.',
+    tr: 'Üç kez dinle ve kelimeleri takip et. Henüz okumaya çalışma.',
+  },
+  'memorize.step.along': { en: 'Read along', tr: 'Birlikte oku' },
+  'memorize.step.alongBody': {
+    en: 'Play it again and recite with the voice, out loud.',
+    tr: 'Tekrar çal ve sesle birlikte, yüksek sesle oku.',
+  },
+  'memorize.step.alone': { en: 'On your own', tr: 'Tek başına' },
+  'memorize.step.aloneBody': {
+    en: 'Now recite it without looking. Tap a word only if you are stuck.',
+    tr: 'Şimdi bakmadan oku. Sadece takılırsan bir kelimeye dokun.',
+  },
+  'memorize.step.join': { en: 'Join it up', tr: 'Öncekiyle birleştir' },
+  'memorize.step.joinBody': {
+    en: 'Recite from {from} through {to} without stopping.',
+    tr: '{from} ayetinden {to} ayetine kadar durmadan oku.',
+  },
+  'memorize.step.whole': { en: 'The whole passage', tr: 'Tamamı' },
+  'memorize.step.wholeBody': {
+    en: 'Last one: recite {range} from beginning to end.',
+    tr: 'Son adım: {range} bölümünü baştan sona oku.',
+  },
+  'memorize.playCount': { en: '{done} / {total} plays', tr: '{done} / {total} dinleme' },
+  'memorize.play': { en: 'Play', tr: 'Çal' },
+  'memorize.replay': { en: 'Play again', tr: 'Tekrar çal' },
+  'memorize.continue': { en: 'Continue', tr: 'Devam' },
+  'memorize.reveal': { en: 'Show it', tr: 'Göster' },
+  'memorize.gotIt': { en: 'I had it', tr: 'Bildim' },
+  'memorize.repeat': { en: 'Again from the top', tr: 'Baştan tekrar' },
+  'memorize.doneTitle': { en: '{range} memorised.', tr: '{range} ezberlendi.' },
+  'memorize.doneBody': {
+    en: 'It is in your plan now, and it will come back tomorrow so it stays.',
+    tr: 'Artık listende. Kalıcı olması için yarın tekrar karşına çıkacak.',
+  },
+  'memorize.leave': { en: 'Stop for now', tr: 'Şimdilik bırak' },
 
   // --- review --------------------------------------------------------------
   'review.leave': { en: 'Leave', tr: 'Çık' },
@@ -188,6 +241,11 @@ export const STRINGS = {
     tr: 'Yanlış duyabilir. Notu sen ver.',
   },
   'recite.tryAgain': { en: 'Try again', tr: 'Tekrar dene' },
+  'recite.heardNothing': {
+    en: 'Nothing was heard. Check the microphone and try again.',
+    tr: 'Hiçbir şey duyulmadı. Mikrofonu kontrol edip tekrar dene.',
+  },
+  'recite.offer': { en: 'Recite it and let the app listen', tr: 'Sesli oku, uygulama dinlesin' },
   'recite.noMic': {
     en: 'This browser cannot record, so reciting is not available here.',
     tr: 'Bu tarayıcı ses kaydedemiyor, bu yüzden okuma kontrolü burada çalışmaz.',

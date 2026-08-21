@@ -69,7 +69,7 @@ export interface PackTextFile {
     translations: Record<string, string>
     transliterations?: Record<string, string>
     words?: Word[]
-    audio?: { from: number; to: number; wordTimings?: [number, number, number][] }
+    audio?: { url?: string; from: number; to: number; wordTimings?: [number, number, number][] }
   }>
 }
 

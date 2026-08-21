@@ -135,6 +135,12 @@ export default function TextDetail() {
     .filter((i) => i.lastEvidence)
     .sort((a, b) => (b.lastEvidence?.at ?? 0) - (a.lastEvidence?.at ?? 0))[0]?.lastEvidence
 
+  // The next few ayah not yet in the plan — the goal for this sitting.
+  const nextToLearn = segments
+    .map((s) => s.index)
+    .filter((index) => !plannedIndices.has(index))
+    .slice(0, settings.memorizeBatch)
+
   const toggle = (index: number) =>
     setSelection((prev) => {
       const next = new Set(prev)
@@ -204,7 +210,25 @@ export default function TextDetail() {
           )}
 
         </div>
-        {audio.error && <p className="mt-2 text-micro text-correction">{audio.error}</p>}
+        {audio.available && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {audio.playingIndex != null ? (
+              <button type="button" className="btn-secondary" onClick={audio.stop}>
+                ■ {t('text.stop')}
+              </button>
+            ) : (
+              <button type="button" className="btn-secondary" onClick={() => audio.playFrom(0)}>
+                ▶ {t('text.playAll')}
+              </button>
+            )}
+            {audio.playingIndex != null && (
+              <span className="text-micro text-ink-soft">
+                {segments.find((s) => s.index === audio.playingIndex)?.ref ?? ''}
+              </span>
+            )}
+          </div>
+        )}
+        {audio.error && <p className="mt-2 text-micro text-correction">{t('text.audioError')}</p>}
       </header>
 
       <ol className="mt-8 divide-y divide-rule border-t border-rule">
@@ -275,18 +299,41 @@ export default function TextDetail() {
             {selection.size > 0
               ? t('text.selected', { count: selection.size })
               : t('text.inPlanCount', { done: plannedIndices.size, total: segments.length })}
+            {plannedIndices.size > 0 && nextToLearn.length > 0 && (
+              <button
+                type="button"
+                className="ms-2 underline underline-offset-2"
+                onClick={() => navigate(`/practise?text=${encodeURIComponent(text.id)}`)}
+              >
+                {t('text.practise')}
+              </button>
+            )}
           </p>
           {selection.size > 0 ? (
-            <button type="button" className="btn-primary" onClick={() => add([...selection])}>
-              {t('text.addSelected', { count: selection.size })}
-            </button>
-          ) : plannedIndices.size < segments.length ? (
+            /* An explicit selection goes straight into the drill. */
             <button
               type="button"
               className="btn-primary"
-              onClick={() => add(segments.map((s) => s.index))}
+              onClick={() => {
+                const picked = [...selection].sort((a, b) => a - b)
+                navigate(
+                  `/memorize?text=${encodeURIComponent(text.id)}&from=${picked[0]}&to=${picked[picked.length - 1]}`,
+                )
+              }}
             >
-              {t('text.addAll')}
+              {t('memorize.cta')}
+            </button>
+          ) : nextToLearn.length > 0 ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() =>
+                navigate(
+                  `/memorize?text=${encodeURIComponent(text.id)}&from=${nextToLearn[0]}&to=${nextToLearn[nextToLearn.length - 1]}`,
+                )
+              }
+            >
+              {plannedIndices.size === 0 ? t('memorize.cta') : t('memorize.ctaMore')}
             </button>
           ) : (
             /* Practice ignores due dates — asking for a surah should never be refused. */

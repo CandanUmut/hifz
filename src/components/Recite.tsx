@@ -154,10 +154,10 @@ export function Recite({
         <div>
           <p className="label mb-2">
             {check.missing.length === 0
-              ? t('recite.allHeard')
-              : t(check.missing.length === 1 ? 'recite.missed' : 'recite.missedPlural', {
+              ? `${t('recite.allHeard')} · ${Math.round(check.score * 100)}%`
+              : `${t(check.missing.length === 1 ? 'recite.missed' : 'recite.missedPlural', {
                   count: check.missing.length,
-                })}
+                })} · ${Math.round(check.score * 100)}%`}
           </p>
           <InkText
             text={check.expectedWords.join(' ')}
@@ -168,10 +168,15 @@ export function Recite({
             className={passageClassName}
             errorWordIndices={check.missing}
           />
-          <p className="mt-3 text-micro text-ink-soft">
-            {t('recite.heard')} {check.heard || '—'}
-          </p>
-          <p className="mt-1 text-micro text-ink-soft">{t('recite.notAJudge')}</p>
+          {/* What it heard, in full and in the same script — you cannot judge
+              the check without seeing this, and it used to be a footnote. */}
+          <div className="mt-3 rounded-md border border-rule bg-paper-raised p-3">
+            <p className="label mb-1">{t('recite.heard')}</p>
+            <p dir={dir} lang={lang} className={check.heard ? passageClassName : 'text-small text-ink-soft'}>
+              {check.heard || t('recite.heardNothing')}
+            </p>
+          </div>
+          <p className="mt-2 text-micro text-ink-soft">{t('recite.notAJudge')}</p>
         </div>
       )}
 
