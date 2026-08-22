@@ -153,19 +153,24 @@ export default function TextDetail() {
    * of buttons that were disabled until you had used them — so the page asked
    * you to do a filing step before it would let you do the thing you came for.
    * Now there are two buttons. One memorises, one tests. Selecting ayah aims
-   * them at the selection; selecting nothing aims them at the surah.
+   * them at the selection; selecting nothing aims them at the whole surah.
    */
   const target = selected.length > 0 ? selected : segments.map((seg) => seg.index)
 
+  /*
+   * Adding and sitting down are not the same act.
+   *
+   * Collapsing them lost the only way to put a whole surah on the study list:
+   * the button quietly took the next few ayah and left the rest unlisted, so
+   * wanting to work through a surah meant ticking it a checkbox at a time. All
+   * of what you aimed at goes on the list — a plan is for the whole surah —
+   * and the sitting that starts is the first few of it, because nobody
+   * memorises thirty ayah in one go.
+   */
   const startStudy = async () => {
-    const batch =
-      selected.length > 0
-        ? selected
-        : studyIndices.size > 0
-          ? [...studyIndices].filter((i): i is number => i != null).sort((a, b) => a - b)
-          : segments.slice(0, settings.memorizeBatch).map((seg) => seg.index)
-    if (!batch.length) return
-    await add(batch, 'study')
+    if (!target.length) return
+    await add(target, 'study')
+    const batch = target.slice(0, Math.max(1, settings.memorizeBatch))
     navigate(
       `/memorize?text=${encodeURIComponent(text.id)}&from=${batch[0]}&to=${batch[batch.length - 1]}`,
     )
@@ -178,6 +183,10 @@ export default function TextDetail() {
       `/test?text=${encodeURIComponent(text.id)}&from=${target[0]}&to=${target[target.length - 1]}`,
     )
   }
+
+  const allSelected = selection.size === segments.length && segments.length > 0
+  const selectAll = () =>
+    setSelection(allSelected ? new Set() : new Set(segments.map((seg) => seg.index)))
 
   const toggle = (index: number) =>
     setSelection((prev) => {
@@ -215,14 +224,20 @@ export default function TextDetail() {
         {items.length > 0 && (
           <div className="mt-5">
             <p className="label mb-2">{t('text.intent')}</p>
-            <div className="flex flex-wrap gap-2">
+            {/* Chips, not three full-width buttons: this is a status, and it
+                was taking more of the screen than the surah. */}
+            <div className="flex flex-wrap gap-1.5">
               {INTENTS.map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setIntentForText(text.id, option)}
                   aria-pressed={intent === option}
-                  className={intent === option ? 'btn-primary' : 'btn-secondary'}
+                  className={`min-h-[36px] rounded-full border px-3 text-micro transition-colors ${
+                    intent === option
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-rule bg-paper-raised text-ink-soft hover:border-ink-soft'
+                  }`}
                 >
                   {t(`intent.${option}`)}
                 </button>
@@ -282,7 +297,34 @@ export default function TextDetail() {
         {audio.error && <p className="mt-2 text-micro text-correction">{t('text.audioError')}</p>}
       </header>
 
-      <ol className="mt-8 divide-y divide-rule border-t border-rule">
+      {/*
+        What the buttons at the bottom are aimed at.
+        
+        A checkbox per ayah and nothing else meant that working through a whole
+        surah started with ticking it a hundred times — and the escape hatch
+        for that used to be a pair of grey underlined words nobody could see.
+        This says the scope in words and lets you change it in one tap.
+      */}
+      <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <p className="text-small">
+          {selection.size > 0
+            ? t('text.aimedAtSelection', { count: selection.size })
+            : t('text.aimedAtAll', { count: segments.length })}
+        </p>
+        <button
+          type="button"
+          onClick={selectAll}
+          className="ms-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-full border
+            border-rule bg-paper-raised px-3 text-micro transition-colors hover:border-ink-soft"
+        >
+          <span aria-hidden className={allSelected ? 'text-verified' : 'text-ink-soft'}>
+            {allSelected ? '☑' : '☐'}
+          </span>
+          {allSelected ? t('text.selectNone') : t('text.selectAll')}
+        </button>
+      </div>
+
+      <ol className="mt-3 divide-y divide-rule border-t border-rule">
         {segments.map((segment) => (
           <Ayah
             key={segment.id}
@@ -306,11 +348,9 @@ export default function TextDetail() {
       <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
         <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className="mb-2 text-center text-micro text-ink-soft">
-            {selection.size > 0
-              ? t('text.selected', { count: selection.size })
-              : plannedIndices.size === 0
-                ? t('text.notAddedYet')
-                : `${t('text.onStudyList', { count: studyIndices.size })} · ${t('text.onReviewList', { count: reviewIndices.size })}`}
+            {plannedIndices.size === 0
+              ? t('text.notAddedYet')
+              : `${t('text.onStudyList', { count: studyIndices.size })} · ${t('text.onReviewList', { count: reviewIndices.size })}`}
           </p>
           {hasMeaning(segments) && (
             <label className="mb-2 flex items-center justify-center gap-2 text-micro text-ink-soft">
@@ -326,10 +366,10 @@ export default function TextDetail() {
           {/* Two buttons, both real, neither ever disabled. */}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className="btn-secondary py-3" onClick={() => void startStudy()}>
-              {selected.length > 0 ? t('text.studySelected', { count: selected.length }) : t('text.studyAll')}
+              {t('text.studyCount', { count: target.length })}
             </button>
             <button type="button" className="btn-primary py-3" onClick={() => void startTest()}>
-              {selected.length > 0 ? t('text.testSelected', { count: selected.length }) : t('test.title')}
+              {t('text.testCount', { count: target.length })}
             </button>
           </div>
         </div>
