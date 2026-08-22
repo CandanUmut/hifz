@@ -102,7 +102,9 @@ export default function Today() {
           </p>
           {studyCount > 0 ? (
             <Link
-              to={`/memorize?text=${encodeURIComponent(study[0].text.id)}&from=${study[0].indices[0]}&to=${study[0].indices[Math.min(study[0].indices.length, 3) - 1]}`}
+              /* Everything waiting on the study list, not the first three of
+                 it — the card above already says how many that is. */
+              to={`/memorize?text=${encodeURIComponent(study[0].text.id)}&from=${study[0].indices[0]}&to=${study[0].indices[study[0].indices.length - 1]}`}
               className="btn-primary mt-3 w-full py-3"
             >
               {t('today.studyStart')}

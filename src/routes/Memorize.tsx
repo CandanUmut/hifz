@@ -74,21 +74,36 @@ export default function Memorize() {
     setRevealed(false)
   }, [])
 
+  /**
+   * Keeps an ayah the moment it is learned, rather than at the end.
+   *
+   * The drill used to bank nothing until the last screen, which is why the
+   * sitting had to be capped at three: walking away from a longer one threw
+   * the whole evening's work away. Each ayah is banked as it is finished, so
+   * leaving early costs only the ayah you were in the middle of.
+   */
+  const keep = useCallback(
+    async (indices: number[]) => {
+      if (!indices.length) return
+      await addToPlan({
+        textId,
+        indices,
+        types: { ...DEFAULT_ITEM_TYPES, meaning: false },
+        stage: 'review',
+      })
+      await promoteToReview(textId, indices)
+      await markStudied(textId, indices)
+    },
+    [textId],
+  )
+
   const finish = useCallback(async () => {
     if (saved.current || !data) return
     saved.current = true
-    const indices = data.segments.map((s) => s.index)
-    // Finishing the drill is what moves a passage into the review queue.
-    await addToPlan({
-      textId,
-      indices,
-      types: { ...DEFAULT_ITEM_TYPES, meaning: false },
-      stage: 'review',
-    })
-    await promoteToReview(textId, indices)
-    await markStudied(textId, indices)
+    // Idempotent: whatever was banked on the way through is already there.
+    await keep(data.segments.map((s) => s.index))
     goto('done')
-  }, [data, goto, textId])
+  }, [data, goto, keep])
 
   if (!data || !segment) return <Centered>{t('common.loading')}</Centered>
 
@@ -107,6 +122,8 @@ export default function Memorize() {
   }
 
   const nextAyah = () => {
+    // This ayah is done with, whatever happens next.
+    void keep([cursor])
     if (!isLast) {
       audio.stop()
       setCursor(segments[position].index)
@@ -190,17 +207,32 @@ export default function Memorize() {
               {text.title} · {t('memorize.goal', { range: rangeLabel })}
             </p>
           </div>
-          {/* One mark per ayah in the goal, so the end is always in sight. */}
-          <div className="mt-2 flex gap-1">
-            {segments.map((s, i) => (
-              <span
-                key={s.id}
-                className={`h-1.5 flex-1 rounded-full ${
-                  i + 1 < position ? 'bg-verified' : i + 1 === position ? 'bg-ink' : 'bg-rule'
-                }`}
-              />
-            ))}
-          </div>
+          {/* One mark per ayah, so the end is always in sight — until there
+              are too many for a mark each to mean anything. */}
+          {segments.length <= 16 ? (
+            <div className="mt-2 flex gap-1">
+              {segments.map((s, i) => (
+                <span
+                  key={s.id}
+                  className={`h-1.5 flex-1 rounded-full ${
+                    i + 1 < position ? 'bg-verified' : i + 1 === position ? 'bg-ink' : 'bg-rule'
+                  }`}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-rule">
+                <div
+                  className="h-full rounded-full bg-verified transition-[width]"
+                  style={{ width: `${((position - 1) / segments.length) * 100}%` }}
+                />
+              </div>
+              <span className="text-micro tabular-nums text-ink-soft">
+                {position}/{segments.length}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
