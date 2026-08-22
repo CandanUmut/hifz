@@ -23,7 +23,6 @@ export interface Settings {
   desiredRetention: number
   dailyNewCap: number
   /** How many ayah one memorisation sitting covers. */
-  memorizeBatch: number
   /** Remembered per user on the text detail page. */
   showTranslationTr: boolean
   showTranslationEn: boolean
@@ -40,7 +39,6 @@ export const DEFAULT_SETTINGS: Settings = {
   enEdition: 'clear-quran',
   desiredRetention: 0.9,
   dailyNewCap: 10,
-  memorizeBatch: 3,
   showTranslationTr: true,
   showTranslationEn: false,
   showTransliteration: true,

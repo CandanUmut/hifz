@@ -158,21 +158,20 @@ export default function TextDetail() {
   const target = selected.length > 0 ? selected : segments.map((seg) => seg.index)
 
   /*
-   * Adding and sitting down are not the same act.
+   * The drill covers what you asked for. All of it.
    *
-   * Collapsing them lost the only way to put a whole surah on the study list:
-   * the button quietly took the next few ayah and left the rest unlisted, so
-   * wanting to work through a surah meant ticking it a checkbox at a time. All
-   * of what you aimed at goes on the list — a plan is for the whole surah —
-   * and the sitting that starts is the first few of it, because nobody
-   * memorises thirty ayah in one go.
+   * It used to quietly shorten the sitting to the next three ayah — you chose
+   * six, you got three — on the theory that nobody memorises six in one go.
+   * That may be true and it is still not the app's call: a button that says
+   * six and delivers three is lying, and it is exactly the kind of deciding
+   * for the reader this app is not supposed to do. Leaving early is allowed
+   * and every ayah finished is kept, so a long sitting costs nothing.
    */
   const startStudy = async () => {
     if (!target.length) return
     await add(target, 'study')
-    const batch = target.slice(0, Math.max(1, settings.memorizeBatch))
     navigate(
-      `/memorize?text=${encodeURIComponent(text.id)}&from=${batch[0]}&to=${batch[batch.length - 1]}`,
+      `/memorize?text=${encodeURIComponent(text.id)}&from=${target[0]}&to=${target[target.length - 1]}`,
     )
   }
 
