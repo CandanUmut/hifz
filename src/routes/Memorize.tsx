@@ -7,6 +7,7 @@ import { addToPlan, getSegments, markStudied, promoteToReview } from '@/db/repo'
 import { DEFAULT_ITEM_TYPES } from '@/engine/items'
 import type { SegmentRecord, TextRecord } from '@/engine/types'
 import { useT } from '@/i18n'
+import { decodeRanges, encodeRanges } from '@/lib/ranges'
 import { segmentWords } from '@/lib/text'
 import { meaningLines, resolveMeaning, resolveTransliteration } from '@/lib/translations'
 import { passageClass } from '@/lib/typography'
@@ -32,11 +33,18 @@ export default function Memorize() {
   const settings = useSettings()
 
   const textId = params.get('text') ?? ''
-  const from = Number(params.get('from') ?? 0)
-  const to = Number(params.get('to') ?? from)
+  /* `ayah` is the exact set. `from`/`to` is the old range form, kept so a
+     link someone already has still opens. */
+  const wanted = useMemo(() => {
+    const exact = decodeRanges(params.get('ayah'))
+    if (exact.length) return exact
+    const from = Number(params.get('from') ?? 0)
+    const to = Number(params.get('to') ?? from)
+    return Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i)
+  }, [params])
 
   const [data, setData] = useState<{ text: TextRecord; segments: SegmentRecord[] } | null>(null)
-  const [cursor, setCursor] = useState(from)
+  const [cursor, setCursor] = useState(() => wanted[0] ?? 0)
   const [step, setStep] = useState<Step>('listen')
   const [plays, setPlays] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -47,9 +55,10 @@ export default function Memorize() {
       const text = await db.texts.get(textId)
       if (!text) return
       const all = await getSegments(textId)
-      setData({ text, segments: all.filter((s) => s.index >= from && s.index <= to) })
+      const asked = new Set(wanted)
+      setData({ text, segments: all.filter((s) => asked.has(s.index)) })
     })()
-  }, [from, textId, to])
+  }, [textId, wanted])
 
   const audio = useAudio(data?.text, data?.segments)
   const segment = data?.segments.find((s) => s.index === cursor)
@@ -149,7 +158,7 @@ export default function Memorize() {
             className="btn-primary py-3"
             onClick={() =>
               navigate(
-                `/test?text=${encodeURIComponent(textId)}&from=${segments[0].index}&to=${segments[segments.length - 1].index}`,
+                `/test?text=${encodeURIComponent(textId)}&ayah=${encodeRanges(segments.map((seg) => seg.index))}`,
               )
             }
           >
@@ -236,7 +245,9 @@ export default function Memorize() {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-column flex-col px-5 pb-40 pt-6">
+      <div /* The footer stacks up to three controls; short clearance clipped
+           the transliteration under a long ayah. */
+        className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-column flex-col px-5 pb-56 pt-6">
         <p className="label">
           {step === 'whole'
             ? t('memorize.step.whole')

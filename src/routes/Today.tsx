@@ -11,6 +11,7 @@ import {
 } from '@/db/repo'
 import { EvidenceChip, IntentBadge } from '@/components/StatusBadges'
 import { Rhythm } from '@/components/Rhythm'
+import { encodeRanges } from '@/lib/ranges'
 import { recentRhythm } from '@/db/rhythm'
 import { useSettings } from '@/state/settings'
 import { useT } from '@/i18n'
@@ -104,7 +105,7 @@ export default function Today() {
             <Link
               /* Everything waiting on the study list, not the first three of
                  it — the card above already says how many that is. */
-              to={`/memorize?text=${encodeURIComponent(study[0].text.id)}&from=${study[0].indices[0]}&to=${study[0].indices[study[0].indices.length - 1]}`}
+              to={`/memorize?text=${encodeURIComponent(study[0].text.id)}&ayah=${encodeRanges(study[0].indices)}`}
               className="btn-primary mt-3 w-full py-3"
             >
               {t('today.studyStart')}

@@ -9,6 +9,7 @@ import { verdict } from '@/engine/recitation'
 import type { ItemRecord, SegmentRecord, TextRecord } from '@/engine/types'
 import type { GradeRating } from '@/engine/scheduler'
 import { useT } from '@/i18n'
+import { decodeRanges } from '@/lib/ranges'
 import { segmentWords } from '@/lib/text'
 import { passageClass } from '@/lib/typography'
 import { useSettings } from '@/state/settings'
@@ -30,8 +31,14 @@ export default function Test() {
   const settings = useSettings()
 
   const textId = params.get('text') ?? ''
-  const from = Number(params.get('from') ?? 0)
-  const to = Number(params.get('to') ?? from)
+  /* The exact set that was chosen; `from`/`to` is the older range form. */
+  const wanted = useMemo(() => {
+    const exact = decodeRanges(params.get('ayah'))
+    if (exact.length) return exact
+    const from = Number(params.get('from') ?? 0)
+    const to = Number(params.get('to') ?? from)
+    return Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i)
+  }, [params])
 
   const [data, setData] = useState<{
     text: TextRecord
@@ -49,9 +56,10 @@ export default function Test() {
       const text = await db.texts.get(textId)
       if (!text) return
       const [all, items] = await Promise.all([getSegments(textId), getItems(textId)])
-      setData({ text, segments: all.filter((s) => s.index >= from && s.index <= to), items })
+      const asked = new Set(wanted)
+      setData({ text, segments: all.filter((s) => asked.has(s.index)), items })
     })()
-  }, [from, textId, to])
+  }, [textId, wanted])
 
   const rungs: Rung[] = useMemo(
     () => (data ? ladder(data.segments.map((s) => s.index)) : []),
@@ -208,7 +216,7 @@ export default function Test() {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-column flex-col justify-center px-5 pb-44 pt-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-column flex-col justify-center px-5 pb-52 pt-6">
         <p className="label">{label}</p>
         <p className="mt-2 text-small text-ink-soft">
           {rung.kind === 'single' ? t('test.singleBody') : t('test.joinBody')}
