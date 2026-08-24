@@ -358,8 +358,9 @@ export default function TextDetail() {
         ))}
       </ol>
 
-      {/* One primary action, thumb-reachable. */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
+      {/* Thumb-reachable, and opaque: a translucent bar over a page of Arabic
+          left the ayah behind it showing through the labels. */}
+      <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper">
         <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className="mb-2 text-center text-micro text-ink-soft">
             {plannedIndices.size === 0

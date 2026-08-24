@@ -285,7 +285,7 @@ export default function Memorize() {
         )}
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
+      <footer className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper">
         <div className="mx-auto max-w-column space-y-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {(step === 'listen' || step === 'along') && (
             <>
