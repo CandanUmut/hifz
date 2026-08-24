@@ -110,6 +110,10 @@ export const STRINGS = {
   'text.addAllToReview': { en: 'Add the whole surah to testing', tr: 'Tüm sureyi teste ekle' },
   'text.study': { en: 'Study ({count})', tr: 'Çalış ({count})' },
   'text.aimedAtAll': { en: 'The whole surah — {count} ayah', tr: 'Tüm sure — {count} ayet' },
+  'text.aimedAtLists': {
+    en: 'What is on your lists — tap a number below to change it',
+    tr: 'Listendekiler — değiştirmek için aşağıdan seç',
+  },
   'text.aimedAtSelection': { en: '{count} ayah selected', tr: '{count} ayet seçildi' },
   'text.studyCount': { en: 'Memorise ({count})', tr: 'Ezberle ({count})' },
   'text.testCount': { en: 'Test ({count})', tr: 'Test et ({count})' },

@@ -27,6 +27,7 @@ import { Transliteration } from '@/components/Transliteration'
 import { SimilarPassages, type ResolvedMatch } from '@/components/SimilarPassages'
 import { useInterference } from '@/lib/useInterference'
 import { useAudio } from '@/lib/useAudio'
+import { encodeRanges } from '@/lib/ranges'
 import { segmentWords } from '@/lib/text'
 import { passageClass, wordClass } from '@/lib/typography'
 import { listPacks, PackUnavailableError } from '@/packs/loader'
@@ -155,7 +156,23 @@ export default function TextDetail() {
    * Now there are two buttons. One memorises, one tests. Selecting ayah aims
    * them at the selection; selecting nothing aims them at the whole surah.
    */
-  const target = selected.length > 0 ? selected : segments.map((seg) => seg.index)
+  /*
+   * What each button will act on, in order of what the reader has said.
+   *
+   * A selection is the clearest statement there is, so it wins. Failing that,
+   * whatever is already on that button's list is a statement too — adding one
+   * ayah of al-Baqara with "Add to list" and then being handed all 286 was the
+   * app ignoring the only thing it had been told. Only when neither list has
+   * anything does the whole surah become the target.
+   */
+  const allIndices = segments.map((seg) => seg.index)
+  const sorted = (set: Set<number | undefined>) =>
+    [...set].filter((i): i is number => i != null).sort((a, b) => a - b)
+
+  const studyTarget =
+    selected.length > 0 ? selected : studyIndices.size > 0 ? sorted(studyIndices) : allIndices
+  const testTarget =
+    selected.length > 0 ? selected : reviewIndices.size > 0 ? sorted(reviewIndices) : allIndices
 
   /*
    * The drill covers what you asked for. All of it.
@@ -168,19 +185,15 @@ export default function TextDetail() {
    * and every ayah finished is kept, so a long sitting costs nothing.
    */
   const startStudy = async () => {
-    if (!target.length) return
-    await add(target, 'study')
-    navigate(
-      `/memorize?text=${encodeURIComponent(text.id)}&from=${target[0]}&to=${target[target.length - 1]}`,
-    )
+    if (!studyTarget.length) return
+    await add(studyTarget, 'study')
+    navigate(`/memorize?text=${encodeURIComponent(text.id)}&ayah=${encodeRanges(studyTarget)}`)
   }
 
   const startTest = async () => {
-    if (!target.length) return
-    await add(target, 'review')
-    navigate(
-      `/test?text=${encodeURIComponent(text.id)}&from=${target[0]}&to=${target[target.length - 1]}`,
-    )
+    if (!testTarget.length) return
+    await add(testTarget, 'review')
+    navigate(`/test?text=${encodeURIComponent(text.id)}&ayah=${encodeRanges(testTarget)}`)
   }
 
   const allSelected = selection.size === segments.length && segments.length > 0
@@ -308,7 +321,9 @@ export default function TextDetail() {
         <p className="text-small">
           {selection.size > 0
             ? t('text.aimedAtSelection', { count: selection.size })
-            : t('text.aimedAtAll', { count: segments.length })}
+            : plannedIndices.size > 0
+              ? t('text.aimedAtLists')
+              : t('text.aimedAtAll', { count: segments.length })}
         </p>
         <button
           type="button"
@@ -343,8 +358,9 @@ export default function TextDetail() {
         ))}
       </ol>
 
-      {/* One primary action, thumb-reachable. */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper/95 backdrop-blur">
+      {/* Thumb-reachable, and opaque: a translucent bar over a page of Arabic
+          left the ayah behind it showing through the labels. */}
+      <div className="fixed inset-x-0 bottom-0 border-t border-rule bg-paper">
         <div className="mx-auto max-w-column px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className="mb-2 text-center text-micro text-ink-soft">
             {plannedIndices.size === 0
@@ -365,10 +381,10 @@ export default function TextDetail() {
           {/* Two buttons, both real, neither ever disabled. */}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className="btn-secondary py-3" onClick={() => void startStudy()}>
-              {t('text.studyCount', { count: target.length })}
+              {t('text.studyCount', { count: studyTarget.length })}
             </button>
             <button type="button" className="btn-primary py-3" onClick={() => void startTest()}>
-              {t('text.testCount', { count: target.length })}
+              {t('text.testCount', { count: testTarget.length })}
             </button>
           </div>
         </div>
