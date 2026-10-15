@@ -16,6 +16,12 @@ import { recentRhythm } from '@/db/rhythm'
 import { useSettings } from '@/state/settings'
 import { useT } from '@/i18n'
 
+/**
+ * Where a newcomer is pointed: An-Nās, the last surah of Juz ʿAmma, which is
+ * where most people start memorising. Same link shape the Library uses.
+ */
+const STARTER_SURAH = `/text/${encodeURIComponent('quran:114')}?pack=quran&file=114.json`
+
 export default function Today() {
   const dailyNewCap = useSettings((s) => s.dailyNewCap)
   const t = useT()
@@ -76,8 +82,15 @@ export default function Today() {
       <section>
         <h1 className="text-display">{t('today.emptyTitle')}</h1>
         <p className="mt-3 text-base text-ink-soft">{t('today.emptyBody')}</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link to="/library" className="btn-primary py-3">
+        <div className="card mt-8 p-4">
+          <h2 className="text-base font-medium">{t('today.suggestTitle')}</h2>
+          <p className="mt-1 text-small text-ink-soft">{t('today.suggestBody')}</p>
+          <Link to={STARTER_SURAH} className="btn-primary mt-3 w-full py-3">
+            {t('today.suggestStart')}
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+          <Link to="/library" className="btn-secondary py-3">
             {t('today.openQuran')}
           </Link>
           <Link to="/add" className="btn-secondary py-3">

@@ -59,6 +59,13 @@ export const STRINGS = {
     en: 'Pick a surah to memorise, or add a text of your own.',
     tr: 'Ezberlemek için bir sure seç ya da kendi metnini ekle.',
   },
+  // A first step for someone who does not know where to begin.
+  'today.suggestTitle': { en: 'New here? Start with Juz ʿAmma.', tr: 'Yeni misin? Amme cüzüyle başla.' },
+  'today.suggestBody': {
+    en: 'The last part of the Qur’an, surah 78 to 114. Its surahs are short, and it is where most people begin. Start from its end: An-Nas is six ayah.',
+    tr: 'Kur’an’ın son cüzü, 78. sureden 114. sureye. Sureleri kısadır ve çoğu kişi ezbere buradan başlar. Sondan başla: Nâs suresi altı ayettir.',
+  },
+  'today.suggestStart': { en: 'Start with An-Nas', tr: 'Nâs suresiyle başla' },
   'today.openQuran': { en: 'Open the Qur’an', tr: 'Kur’an’ı aç' },
   'today.addOwn': { en: 'Add my own text', tr: 'Kendi metnimi ekle' },
   'today.learning': { en: 'Working on', tr: 'Üzerinde çalıştıkların' },

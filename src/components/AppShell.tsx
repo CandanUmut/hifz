@@ -43,7 +43,7 @@ export function AppShell() {
       </a>
 
       <header className="border-b border-rule">
-        <nav className="mx-auto flex max-w-column items-center gap-1 px-5 py-3" aria-label="Main">
+        <nav className="mx-auto flex max-w-column items-center gap-1 px-5 py-1.5" aria-label="Main">
           <span className="me-auto text-small font-medium tracking-tight">hifz</span>
           {NAV.map((entry) => (
             <NavLink
@@ -52,7 +52,8 @@ export function AppShell() {
               end={entry.end}
               className={({ isActive }) =>
                 [
-                  'rounded-md px-2.5 py-2 text-small transition-colors',
+                  // 48px tall: a thumb, not a cursor, is what presses these.
+                  'inline-flex min-h-[48px] items-center rounded-md px-2.5 text-small transition-colors',
                   isActive ? 'text-ink underline underline-offset-4' : 'text-ink-soft hover:text-ink',
                 ].join(' ')
               }

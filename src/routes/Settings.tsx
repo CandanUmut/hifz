@@ -160,7 +160,7 @@ export default function Settings() {
             step={1}
             value={settings.dailyNewCap}
             onChange={(e) => set('dailyNewCap', Number(e.target.value))}
-            className="mt-2 w-full accent-[rgb(var(--focus))]"
+            className="mt-2 h-12 w-full accent-[rgb(var(--focus))]"
           />
         </label>
         <Note>{t('settings.newPerDayNote')}</Note>
@@ -275,7 +275,7 @@ function Check({
   label: string
 }) {
   return (
-    <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+    <label className="flex min-h-[48px] cursor-pointer items-center gap-3">
       <input
         type="checkbox"
         checked={checked}
@@ -313,7 +313,7 @@ function Select({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3 text-small"
+          className="mt-1 min-h-[48px] w-full rounded-md border border-rule bg-paper-raised px-3 text-small"
         >
           {options.map((o) => (
             <option key={o.value} value={o.value}>

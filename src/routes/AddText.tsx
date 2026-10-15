@@ -92,7 +92,7 @@ export default function AddText() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('add.namePlaceholder')}
-              className="mt-1 min-h-[44px] w-full rounded-md border border-rule bg-paper-raised px-3
+              className="mt-1 min-h-[48px] w-full rounded-md border border-rule bg-paper-raised px-3
                 text-base"
             />
           </label>
@@ -119,7 +119,7 @@ export default function AddText() {
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
                 placeholder={resolvedDir === 'rtl' ? 'ar' : uiLang}
-                className="mt-1 min-h-[44px] w-28 rounded-md border border-rule bg-paper-raised px-3
+                className="mt-1 min-h-[48px] w-28 rounded-md border border-rule bg-paper-raised px-3
                   text-small"
               />
             </label>
@@ -128,7 +128,7 @@ export default function AddText() {
               <select
                 value={dir}
                 onChange={(e) => setDir(e.target.value as typeof dir)}
-                className="mt-1 min-h-[44px] rounded-md border border-rule bg-paper-raised px-3
+                className="mt-1 min-h-[48px] rounded-md border border-rule bg-paper-raised px-3
                   text-small"
               >
                 <option value="auto">Auto ({guessDirection(body)})</option>
@@ -292,7 +292,7 @@ function TypeRow({
   return (
     <label
       className={[
-        'flex min-h-[44px] items-start gap-3 rounded-md border px-3 py-2',
+        'flex min-h-[48px] items-start gap-3 rounded-md border px-3 py-2',
         disabled ? 'border-rule opacity-60' : 'cursor-pointer border-rule',
       ].join(' ')}
     >

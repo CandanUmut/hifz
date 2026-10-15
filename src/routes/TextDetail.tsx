@@ -245,7 +245,7 @@ export default function TextDetail() {
                   type="button"
                   onClick={() => setIntentForText(text.id, option)}
                   aria-pressed={intent === option}
-                  className={`min-h-[36px] rounded-full border px-3 text-micro transition-colors ${
+                  className={`min-h-[48px] rounded-full border px-3 text-micro transition-colors ${
                     intent === option
                       ? 'border-ink bg-ink text-paper'
                       : 'border-rule bg-paper-raised text-ink-soft hover:border-ink-soft'
@@ -264,7 +264,7 @@ export default function TextDetail() {
           its own settings rather than on the text.
         */}
         <details className="group mt-5">
-          <summary className="label flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden">
+          <summary className="label flex min-h-[48px] cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden">
             <span className="text-ink-soft transition-transform group-open:rotate-90">›</span>
             {t('text.display')}
           </summary>
@@ -328,7 +328,7 @@ export default function TextDetail() {
         <button
           type="button"
           onClick={selectAll}
-          className="ms-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-full border
+          className="ms-auto inline-flex min-h-[48px] items-center gap-1.5 rounded-full border
             border-rule bg-paper-raised px-3 text-micro transition-colors hover:border-ink-soft"
         >
           <span aria-hidden className={allSelected ? 'text-verified' : 'text-ink-soft'}>
@@ -368,7 +368,7 @@ export default function TextDetail() {
               : `${t('text.onStudyList', { count: studyIndices.size })} · ${t('text.onReviewList', { count: reviewIndices.size })}`}
           </p>
           {hasMeaning(segments) && (
-            <label className="mb-2 flex items-center justify-center gap-2 text-micro text-ink-soft">
+            <label className="flex min-h-[48px] items-center justify-center gap-2 text-micro text-ink-soft">
               <input
                 type="checkbox"
                 checked={includeMeaning}
@@ -428,8 +428,8 @@ function Ayah({
 
   return (
     <li className="py-5">
-      <div className="mb-2 flex items-center gap-2">
-        <label className="flex min-h-[44px] items-center gap-2 text-micro text-ink-soft">
+      <div className="mb-2 flex items-center gap-1">
+        <label className="flex min-h-[48px] items-center gap-2 text-micro text-ink-soft">
           <input
             type="checkbox"
             checked={selected}
@@ -440,7 +440,9 @@ function Ayah({
           {segment.ref ?? segment.index + 1}
         </label>
         {planned && <span className="text-micro text-verified">✓</span>}
-        <span className="ms-auto flex items-center gap-1">
+        {/* No gap: each button carries its own padding, and the 48px play
+            button has to fit beside the other two on a phone. */}
+        <span className="ms-auto flex items-center">
           {audio.available && (
             <button
               type="button"
@@ -539,7 +541,7 @@ function Toggle({
   onChange: (value: boolean) => void
 }) {
   return (
-    <label className="flex min-h-[44px] items-center gap-2 text-small text-ink-soft">
+    <label className="flex min-h-[48px] items-center gap-2 text-small text-ink-soft">
       <input
         type="checkbox"
         checked={on}

@@ -187,7 +187,7 @@ export default function Progress() {
               <li key={item.id}>
                 <Link
                   to={`/review?item=${encodeURIComponent(item.id)}`}
-                  className="flex items-center gap-3 py-3"
+                  className="flex min-h-[48px] items-center gap-3 py-3"
                 >
                   <span className="me-auto min-w-0 truncate text-small">
                     {title}

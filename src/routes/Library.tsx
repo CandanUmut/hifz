@@ -108,7 +108,7 @@ export default function Library() {
               onClick={() => setFilter(f.id)}
               aria-pressed={filter === f.id}
               className={[
-                'min-h-[44px] shrink-0 rounded-md px-3 text-small',
+                'min-h-[48px] min-w-[48px] shrink-0 rounded-md px-3 text-small',
                 filter === f.id ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
               ].join(' ')}
             >
@@ -121,7 +121,7 @@ export default function Library() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="min-h-[44px] rounded-md border border-rule bg-paper-raised px-2 text-micro"
+            className="min-h-[48px] rounded-md border border-rule bg-paper-raised px-2 text-micro"
           >
             {SORTS.map((s) => (
               <option key={s.id} value={s.id}>

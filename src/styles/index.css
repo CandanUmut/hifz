@@ -35,7 +35,7 @@
 @layer components {
   /* Bottom-anchored primary on mobile, inline on larger screens. */
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4
+    @apply inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-lg px-4
       text-small font-medium transition-[background-color,border-color,color,transform,box-shadow]
       duration-150 active:scale-[0.985];
   }
